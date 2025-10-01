@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=plymotion
+Description=This is a plymouth theme which runs videos theme gif
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/plymotion
+ScriptFile=/usr/share/plymouth/themes/plymotion/plymotion-plymouth.script

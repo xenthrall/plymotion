@@ -1,0 +1,20 @@
+for(i = 0; i <= 371; i++)
+  video_image_arr[i] = Image("/media/frame"+i+".png");
+
+pos_x = Window.GetWidth()/2 - video_image_arr[0].GetWidth()/2;
+pos_y = Window.GetHeight()/2 - video_image_arr[0].GetHeight()/2;
+
+sprite = Sprite(video_image_arr[0]);
+sprite.SetX(pos_x);
+sprite.SetY(pos_y);
+
+count = 0 ;
+
+fun refresh_callback () {
+  sprite.SetImage(video_image_arr[count]);
+  sprite.SetOpacity(1);
+  spr.SetZ(15);
+  count++;
+}
+
+Plymouth.SetRefreshFunction (refresh_callback);
