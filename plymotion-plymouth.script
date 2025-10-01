@@ -1,4 +1,4 @@
-for(i = 0; i <= 371; i++)
+for(i = 0; i <= 13; i++)
   video_image_arr[i] = Image("/media/frame"+i+".png");
 
 pos_x = Window.GetWidth()/2 - video_image_arr[0].GetWidth()/2;
