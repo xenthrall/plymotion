@@ -137,7 +137,6 @@ def convert(
 @app.command()
 def gui() -> None:
     """Launch the graphical interface."""
-    from plymotion.ui.app import PlymotionApp
+    from plymotion.ui.app import run as run_gui
 
-    app_window = PlymotionApp()
-    app_window.run()
+    run_gui()
