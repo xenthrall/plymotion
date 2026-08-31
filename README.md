@@ -1,109 +1,162 @@
-# Plymotion 🎬
+# Plymotion
 
-Plymotion es un tema/plantilla para **Plymouth** que te permite transformar cualquier video en una animación de arranque *frame-by-frame* para tu sistema Linux. Dale un toque personal y dinámico a la pantalla de inicio de tu distribución.
+Convierte cualquier video en una animación de arranque personalizada para tu sistema Linux usando Plymouth.
 
------
+## Características
 
-## ✨ Características
+- **GUI con tkinter**: Interfaz gráfica para seleccionar videos desde el gestor de archivos
+- **CLI en Python**: Herramienta de línea de comandos para automatización
+- **Frame-by-frame**: Extrae frames del video y los convierte en una secuencia de animación
+- **Loop infinito**: La animación se repite continuamente durante el boot
+- **Optimización automática**: Redimensiona y comprime frames para carga rápida
+- **Instalación segura**: Backup automático del theme anterior antes de sobreescribir
 
-  - **Fácil de usar**: Convierte cualquier video en una secuencia de imágenes y úsalo como animación.
-  - **Personalizable**: Control total sobre la animación que se muestra al arrancar el sistema.
-  - **Ligero**: Basado en el motor de scripting de Plymouth para un rendimiento óptimo.
-
------
-
-## 🚀 Instalación en Ubuntu y derivados
-
-Sigue estos pasos para instalar y configurar Plymotion en tu sistema.
-
-### 1\. Clonar el repositorio
-
-Primero, clona este repositorio directamente en el directorio de temas de Plymouth.
+## Instalación
 
 ```bash
-cd /usr/share/plymouth/themes
-sudo git clone https://github.com/xenthrall/plymotion.git
+# Clonar el repositorio
+git clone https://github.com/xenthrall/plymotion.git
+cd plymotion
+
+# Instalar con uv
+uv sync
 ```
 
-### 2\. Instalar el tema
+## Uso
 
-Usa `update-alternatives` para que el sistema reconozca Plymotion como una opción de tema de arranque.
+### Interfaz gráfica
 
 ```bash
-sudo update-alternatives --install \
-/usr/share/plymouth/themes/default.plymouth default.plymouth \
-/usr/share/plymouth/themes/plymotion/plymotion.plymouth 120
+plymotion gui
 ```
 
-*(El `120` al final establece una alta prioridad para este tema).*
+Se abre una ventana donde puedes:
+1. Seleccionar un archivo de video con el botón "Examinar"
+2. Configurar resolución, FPS y nombre del theme
+3. Click "Convertir" - se extraen y optimizan los frames
+4. Click "Instalar" - se instala el theme con backup automático
+5. Reiniciar para ver el nuevo boot splash
 
-### 3\. Seleccionar el tema
-
-Ejecuta el siguiente comando para abrir un menú interactivo donde podrás seleccionar `plymotion.plymouth` de la lista.
+### Línea de comandos
 
 ```bash
-sudo update-alternatives --config default.plymouth
+# Convertir video a theme
+plymotion convert --video-input mi_video.mp4
+
+# Con opciones personalizadas
+plymotion convert \
+  --video-input mi_video.mp4 \
+  --output-dir ./output \
+  --resolution 1920x1080 \
+  --fps 24 \
+  --theme-name mi-theme
 ```
 
-### 4\. Actualizar la imagen de arranque (initramfs)
+### Opciones CLI
 
-Aplica los cambios al disco de arranque para que se carguen en el próximo inicio.
+| Opción | Descripción | Default |
+|--------|-------------|---------|
+| `--video-input, -i` | Video de entrada (requerido) | - |
+| `--output-dir, -o` | Directorio de salida | `./plymotion-output` |
+| `--resolution, -r` | Resolución destino (WxH) | `1920x1080` |
+| `--fps, -f` | Frames por segundo | `30` |
+| `--theme-name, -t` | Nombre del tema | `plymotion` |
+
+## Seguridad Plymouth
+
+**Plymouth es seguro**: Un theme roto o corrupto NUNCA impide el boot. Plymouth cae en fallback automático a modo texto. El proceso real de boot (systemd/init) continúa sin afectarse.
+
+### Medidas de protección
+
+- **Backup automático**: Se guarda una copia del theme actual antes de sobreescribir
+- **Validación**: Se verifican archivos requeridos (.plymouth, .script, frames) antes de instalar
+- **Rollback**: Si algo falla, se puede restaurar el theme anterior
+
+### Recuperación si Plymouth falla
+
+Si el boot se ve raro o en negro:
 
 ```bash
+# Desde el menú GRUB: presionar 'e', agregar al kernel:
+plymouth.enable=0
+
+# O desde TTY (Ctrl+Alt+F2):
+sudo plymouth-set-default-theme -R text
 sudo update-initramfs -u
 ```
 
-### 5\. Reiniciar
-
-¡Todo listo\! Reinicia tu sistema para ver la nueva animación en acción.
+### Test sin reiniciar
 
 ```bash
-sudo reboot
+sudo plymouthd --no-daemon --debug
+# En otra terminal:
+sudo plymouth show-splash
+# Para salir (Ctrl+Alt+F3):
+sudo plymouth quit
 ```
 
------
+## Desarrollo
 
-## 🛠️ Desarrollo y Pruebas
+### Requisitos
 
-Si quieres modificar el tema o probarlo sin reiniciar, puedes usar los siguientes métodos.
+- Python 3.10+
+- uv
+- ffmpeg (para extraer frames de video)
 
-### Método 1 – Ejecución manual de Plymouth
+### Comandos de desarrollo
 
-Este método te permite ver el tema a pantalla completa tal como se vería en el arranque.
+```bash
+# Instalar dependencias
+uv sync --all-extras
 
-1.  **Inicia el demonio de Plymouth** en una terminal:
+# Tests
+uv run pytest tests/ -v
 
-    ```bash
-    sudo plymouthd --no-daemon --debug
-    ```
+# Linting
+uv run ruff check src/ tests/
 
-2.  En **otra terminal**, ejecuta el comando para mostrar la animación:
+# Type checking
+uv run pyright src/
+```
 
-    ```bash
-    sudo plymouth show-splash
-    ```
+### Estructura del proyecto
 
-3.  ⚠️ **Para salir**, la pantalla quedará bloqueada por Plymouth. Cambia a otra TTY (consola de texto) con **`Ctrl+Alt+F3`** y ejecuta:
+```
+plymotion/
+├── pyproject.toml
+├── src/plymotion/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── cli.py                  # CLI principal (convert, gui)
+│   ├── video_extractor.py      # Extracción de frames con ffmpeg
+│   ├── frame_processor.py      # Optimización con Pillow
+│   ├── template_generator.py   # Generador de .script y .plymouth
+│   ├── installer.py            # Instalación segura del theme
+│   └── ui/
+│       ├── __init__.py
+│       ├── app.py              # Ventana principal tkinter
+│       └── widgets.py          # Widgets reutilizables
+├── tests/
+│   ├── test_frame_processor.py
+│   ├── test_template_generator.py
+│   ├── test_cli.py
+│   ├── test_installer.py
+│   └── test_ui.py
+├── plymotion-plymouth.plymouth
+├── plymotion-plymouth.script
+└── README.md
+```
 
-    ```bash
-    sudo plymouth quit
-    ```
+### Arquitectura UI/Lógica
 
-4.  Vuelve a tu entorno gráfico con **`Ctrl+Alt+F1`** o **`Ctrl+Alt+F2`**.
+La UI (tkinter) es solo una capa de presentación. Toda la lógica vive en módulos independientes:
+- `video_extractor.py` - Extracción de frames
+- `frame_processor.py` - Optimización de imágenes
+- `template_generator.py` - Generación de archivos Plymouth
+- `installer.py` - Instalación segura
 
-### Método 2 – Test rápido (10 segundos)
+Esto permite agregar otras interfaces (web, CLI, etc.) sin modificar la lógica core.
 
-Este es un método más sencillo para una previsualización rápida.
+## License
 
-1.  **Copia el tema** (si no lo clonaste directamente en el directorio de temas):
-
-    ```bash
-    sudo cp -r ~/ruta/a/plymotion /usr/share/plymouth/themes/
-    ```
-
-2.  **Ejecuta el test**:
-    Este comando mostrará la animación durante 10 segundos y se cerrará automáticamente.
-
-    ```bash
-    sudo plymouthd ; sudo plymouth --show-splash ; sleep 10 ; sudo plymouth --quit
-    ```
+MIT
