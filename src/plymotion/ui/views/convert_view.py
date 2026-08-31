@@ -183,13 +183,20 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             )
 
             update_progress(80, "Generando archivos Plymouth...")
-            script_path = out_dir / f"{slug}-plymouth.script"
-            plymouth_path = out_dir / f"{slug}-plymouth.plymouth"
+            # Filenames MUST match the theme directory name (slug.plymouth, not
+            # slug-plymouth.plymouth): Ubuntu/Debian's initramfs-tools plymouth
+            # hook expects themes/<slug>/<slug>.plymouth and silently drops any
+            # theme that doesn't match when baking the initramfs, which makes
+            # the theme play fine on preview/shutdown (live filesystem) but
+            # fall back to a text-mode error at real boot. See
+            # installer.validate_theme().
+            script_path = out_dir / f"{slug}.script"
+            plymouth_path = out_dir / f"{slug}.plymouth"
             image_dir = f"/usr/share/plymouth/themes/{slug}"
 
             generate_script(script_path, frame_count)
             generate_plymouth(
-                plymouth_path, name, image_dir, f"{image_dir}/{slug}-plymouth.script"
+                plymouth_path, name, image_dir, f"{image_dir}/{slug}.script"
             )
             loop_seconds = estimate_loop_seconds(frame_count)
             library.save_manifest(

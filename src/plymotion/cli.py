@@ -127,13 +127,21 @@ def convert(
     typer.echo(f"  Optimized {frame_count} frames to fit {target_w}x{target_h}, {colors} colors.")
 
     # Step 3: Generate theme files
+    # Filenames MUST match the theme directory name exactly (theme_name.plymouth,
+    # not theme_name-plymouth.plymouth): Ubuntu/Debian's initramfs-tools plymouth
+    # hook derives the expected path as themes/<name>/<name>.plymouth from
+    # update-alternatives' target, and silently skips (does not bake into the
+    # initramfs) any theme where that doesn't resolve. A mismatch here means the
+    # theme shows correctly when previewed or during shutdown (which use the
+    # live filesystem) but falls back to a text-mode error at actual boot
+    # (which uses the baked initramfs copy). See validate_theme().
     typer.echo("Generating Plymouth theme files...")
-    script_path = output_dir / f"{theme_name}-plymouth.script"
-    plymouth_path = output_dir / f"{theme_name}-plymouth.plymouth"
+    script_path = output_dir / f"{theme_name}.script"
+    plymouth_path = output_dir / f"{theme_name}.plymouth"
 
     generate_script(script_path, frame_count)
     generate_plymouth(plymouth_path, theme_name, resolved_image_dir,
-                      f"{resolved_image_dir}/{theme_name}-plymouth.script")
+                      f"{resolved_image_dir}/{theme_name}.script")
     typer.echo(f"  {script_path.name}")
     typer.echo(f"  {plymouth_path.name}")
 
@@ -153,7 +161,7 @@ def convert(
         typer.echo(
             f"  sudo update-alternatives --install "
             f"/usr/share/plymouth/themes/default.plymouth default.plymouth "
-            f"/usr/share/plymouth/themes/{theme_name}/{theme_name}-plymouth.plymouth 120"
+            f"/usr/share/plymouth/themes/{theme_name}/{theme_name}.plymouth 120"
         )
         typer.echo("  sudo update-initramfs -u")
 

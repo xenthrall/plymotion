@@ -22,8 +22,13 @@ from plymotion.installer import (
 
 
 def _make_theme(directory: Path, *, with_script: bool = True, with_frames: bool = True) -> None:
-    """Helper to create a minimal valid theme."""
-    config = directory / "test.plymouth"
+    """Helper to create a minimal valid theme.
+
+    The .plymouth/.script filenames match the directory name, as required by
+    Ubuntu/Debian's initramfs-tools plymouth hook (see validate_theme()).
+    """
+    stem = directory.name
+    config = directory / f"{stem}.plymouth"
     config.write_text(
         "[Plymouth Theme]\n"
         "Name=test\n"
@@ -31,10 +36,10 @@ def _make_theme(directory: Path, *, with_script: bool = True, with_frames: bool 
         "\n"
         "[script]\n"
         "ImageDir=/test\n"
-        "ScriptFile=/test/test.script\n"
+        f"ScriptFile=/test/{stem}.script\n"
     )
     if with_script:
-        script = directory / "test.script"
+        script = directory / f"{stem}.script"
         script.write_text("sprite = Sprite(Image('/test/frame1.png'));\n")
     if with_frames:
         frame = directory / "frame1.png"
@@ -73,6 +78,25 @@ def test_validate_empty_script(tmp_path: Path) -> None:
     (tmp_path / "test.script").touch()
     errors = validate_theme(tmp_path)
     assert any("empty" in e.lower() for e in errors)
+
+
+def test_validate_plymouth_filename_must_match_directory_name(tmp_path: Path) -> None:
+    """A .plymouth filename that doesn't match its directory name is rejected.
+
+    Ubuntu/Debian's initramfs-tools plymouth hook resolves each theme as
+    themes/<dir-name>/<dir-name>.plymouth and silently skips baking it into
+    the initramfs otherwise, which is exactly the "works live, breaks on
+    real boot" bug this check exists to catch before install.
+    """
+    (tmp_path / f"{tmp_path.name}-plymouth.plymouth").write_text(
+        "[Plymouth Theme]\nName=test\nModuleName=script\n"
+        "[script]\nImageDir=/test\nScriptFile=/test/test.script\n"
+    )
+    (tmp_path / "test.script").write_text("sprite = Sprite(Image('/test/frame1.png'));\n")
+    (tmp_path / "frame1.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    errors = validate_theme(tmp_path)
+    assert any("must match the theme directory name" in e for e in errors)
 
 
 def test_validate_no_frames(tmp_path: Path) -> None:

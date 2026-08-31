@@ -98,6 +98,22 @@ def validate_theme(theme_dir: Path) -> list[str]:
     config = plymouth_files[0]
     content = config.read_text()
 
+    # Ubuntu/Debian's initramfs-tools plymouth hook resolves each theme's
+    # module/files as themes/<dir-name>/<dir-name>.plymouth (derived from the
+    # update-alternatives target's basename), and silently skips baking a
+    # theme into the initramfs if that path doesn't exist. A mismatch here
+    # means the theme still looks fine live (preview, shutdown/reboot splash,
+    # both read straight off disk) but boot itself falls back to a text-mode
+    # error, since it runs from the initramfs snapshot instead.
+    if config.stem != theme_dir.name:
+        errors.append(
+            f"Plymouth config filename '{config.name}' must match the theme "
+            f"directory name '{theme_dir.name}' (expected '{theme_dir.name}.plymouth'): "
+            "Ubuntu/Debian's initramfs-tools hook silently drops themes that don't "
+            "match this when building the initramfs, which shows up as a working "
+            "shutdown animation but a broken/text boot splash."
+        )
+
     if "ModuleName=script" not in content:
         errors.append("Theme does not use the 'script' module")
 

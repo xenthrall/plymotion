@@ -69,10 +69,10 @@ def test_convert_flat_layout_and_default_image_dir(tmp_path: Path) -> None:
 
     # The .script references frames relative to ImageDir ("/frameN.png"),
     # not a baked-in absolute path; ImageDir itself lives in the .plymouth.
-    script = (output_dir / "mytheme-plymouth.script").read_text()
+    script = (output_dir / "mytheme.script").read_text()
     assert '"/frame" + (i + 1) + ".png"' in script
 
-    plymouth = (output_dir / "mytheme-plymouth.plymouth").read_text()
+    plymouth = (output_dir / "mytheme.plymouth").read_text()
     assert "ImageDir=/usr/share/plymouth/themes/mytheme" in plymouth
 
 
@@ -125,5 +125,5 @@ def test_convert_respects_custom_image_dir(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0, result.output
-    plymouth = (output_dir / "plymotion-plymouth.plymouth").read_text()
+    plymouth = (output_dir / "plymotion.plymouth").read_text()
     assert "ImageDir=/opt/custom" in plymouth
