@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import flet as ft
+import pytest
 
 
 def test_widgets_import() -> None:
@@ -38,11 +39,11 @@ def test_context_and_widgets_import() -> None:
     """Shared plumbing modules import without error."""
     from plymotion.ui.context import AppContext
     from plymotion.ui.os_utils import open_in_file_manager
-    from plymotion.ui.widgets import animate_preview, theme_card
+    from plymotion.ui.widgets import build_preview_gif, theme_card
 
     assert AppContext is not None
     assert theme_card is not None
-    assert animate_preview is not None
+    assert build_preview_gif is not None
     assert open_in_file_manager is not None
 
 
@@ -68,74 +69,54 @@ def test_append_log() -> None:
     assert log_view.controls[1].value == "second"
 
 
-class _FakeImage:
-    """Duck-typed stand-in for ft.Image: tracks src changes and update() calls.
-
-    animate_preview() only touches `.src` and `.update()`, so a real Flet
-    control (which needs a live page/session to attach to) isn't needed.
-    """
-
-    def __init__(self) -> None:
-        self.src: bytes | None = None
-        self.update_calls = 0
-
-    def update(self) -> None:
-        self.update_calls += 1
-
-
-def test_animate_preview_cycles_frames_via_control_update(tmp_path: Path) -> None:
-    """Each frame change is pushed with image.update(), not a bare page.update()
-    (a bare page.update() does not reach a control inside an open dialog)."""
-    from plymotion.ui.widgets import animate_preview
+def _make_frames(tmp_path: Path, count: int) -> list[Path]:
+    from PIL import Image as PILImage
 
     frames = []
-    for i in range(3):
+    for i in range(count):
         p = tmp_path / f"frame{i}.png"
-        p.write_bytes(f"frame-{i}".encode())
+        PILImage.new("RGB", (16, 12), (i * 20 % 255, 0, 0)).save(p)
         frames.append(p)
-
-    image = _FakeImage()
-    animate_preview(image, frames, fps=1000, loops=2)  # type: ignore[arg-type]
-
-    assert image.update_calls == len(frames) * 2
-    assert image.src == frames[-1].read_bytes()
+    return frames
 
 
-def test_animate_preview_stops_when_cancelled(tmp_path: Path) -> None:
-    """is_cancelled() lets a closed dialog stop the loop instead of running to
-    completion in the background."""
-    from plymotion.ui.widgets import animate_preview
+def test_build_preview_gif_produces_animated_gif(tmp_path: Path) -> None:
+    """The result is a real multi-frame GIF, one frame per input PNG, that
+    Flet's Image control can animate natively (client-side) once set as src
+    — no background thread or repeated control.update() needed."""
+    import io
 
-    frames = []
-    for i in range(5):
-        p = tmp_path / f"frame{i}.png"
-        p.write_bytes(b"x")
-        frames.append(p)
+    from PIL import Image as PILImage
 
-    image = _FakeImage()
-    seen = {"count": 0}
+    from plymotion.ui.widgets import build_preview_gif
 
-    def is_cancelled() -> bool:
-        seen["count"] += 1
-        return seen["count"] > 2
+    frames = _make_frames(tmp_path, 5)
+    gif_bytes = build_preview_gif(frames, fps=10)
 
-    animate_preview(image, frames, fps=1000, loops=10, is_cancelled=is_cancelled)  # type: ignore[arg-type]
-
-    assert image.update_calls == 2
+    assert gif_bytes[:6] in (b"GIF87a", b"GIF89a")
+    with PILImage.open(io.BytesIO(gif_bytes)) as gif:
+        assert gif.is_animated
+        assert gif.n_frames == 5
 
 
-def test_animate_preview_stops_gracefully_if_control_detached(tmp_path: Path) -> None:
-    """If the control's update() raises RuntimeError (detached from the page,
-    e.g. the dialog was closed), the loop stops instead of crashing the
-    background thread."""
-    from plymotion.ui.widgets import animate_preview
+def test_build_preview_gif_loops_forever(tmp_path: Path) -> None:
+    """loop=0 in the GIF header means infinite looping, matching how the
+    real Plymouth splash loops."""
+    import io
 
-    class _DetachedImage(_FakeImage):
-        def update(self) -> None:
-            raise RuntimeError("Control must be added to the page first")
+    from PIL import Image as PILImage
 
-    frames = [tmp_path / "frame0.png"]
-    frames[0].write_bytes(b"x")
+    from plymotion.ui.widgets import build_preview_gif
 
-    animate_preview(_DetachedImage(), frames, fps=1000, loops=5)  # type: ignore[arg-type]
-    # No exception raised is the assertion here.
+    frames = _make_frames(tmp_path, 3)
+    gif_bytes = build_preview_gif(frames, fps=10)
+
+    with PILImage.open(io.BytesIO(gif_bytes)) as gif:
+        assert gif.info.get("loop") == 0
+
+
+def test_build_preview_gif_rejects_empty_frame_list() -> None:
+    from plymotion.ui.widgets import build_preview_gif
+
+    with pytest.raises(ValueError):
+        build_preview_gif([])

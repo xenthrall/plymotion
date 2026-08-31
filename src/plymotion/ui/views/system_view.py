@@ -46,31 +46,26 @@ def build_system_view(ctx: AppContext) -> ft.Control:
             ctx.notify("Este tema no tiene frames legibles para previsualizar.")
             return
 
-        cancelled = {"value": False}
+        try:
+            gif_bytes = widgets.build_preview_gif(frames)
+        except Exception as exc:
+            ctx.notify(f"No se pudo generar el preview: {exc}")
+            return
+
         image = ft.Image(
-            src=frames[0].read_bytes(),
+            src=gif_bytes,
             width=PREVIEW_SIZE[0], height=PREVIEW_SIZE[1],
             fit=ft.BoxFit.CONTAIN, border_radius=8,
         )
-
-        def close_preview(_e: Any = None) -> None:
-            cancelled["value"] = True
-            page.pop_dialog()
-
         dialog = ft.AlertDialog(
             title=ft.Text(theme.name),
             content=ft.Container(
                 content=image, width=PREVIEW_SIZE[0] + 20, height=PREVIEW_SIZE[1] + 20,
                 alignment=ft.Alignment.CENTER,
             ),
-            actions=[ft.TextButton("Cerrar", on_click=close_preview)],
-            on_dismiss=lambda _e: cancelled.__setitem__("value", True),
+            actions=[ft.TextButton("Cerrar", on_click=lambda _e: page.pop_dialog())],
         )
         page.show_dialog(dialog)
-        page.run_thread(
-            widgets.animate_preview, image, frames,
-            fps=12.0, loops=6, is_cancelled=lambda: cancelled["value"],
-        )
 
     def run_privileged(
         busy_message: str, log_message: str, action: Any, success_message: str

@@ -37,43 +37,12 @@ fun refresh_callback () {
 
 Plymouth.SetRefreshFunction(refresh_callback);
 """)
-
-# Frames are scaled up to the real boot screen size once, at load time (not
-# per-refresh-callback, which would rescale on every frame for no reason).
-# Window.GetWidth()/GetHeight() are only known at boot, so this is the only
-# way to truly fill the screen regardless of the machine's actual
-# resolution — baking a big fixed-resolution PNG per frame instead would
-# both bloat every generated theme and still not match screens other than
-# the one it was generated for. Scaling stretches to exactly fill the
-# screen (aspect ratio not preserved), which is the standard way real
-# fullscreen Plymouth themes fill the boot background.
-SCRIPT_TEMPLATE_FULLSCREEN = Template("""\
-screen_w = Window.GetWidth();
-screen_h = Window.GetHeight();
-
-for(i = 0; i < $frame_count; i++) {
-  frame_image = Image("/frame" + (i + 1) + ".png");
-  video_image_arr[i] = frame_image.Scale(screen_w, screen_h);
-}
-
-sprite = Sprite(video_image_arr[0]);
-sprite.SetX(0);
-sprite.SetY(0);
-sprite.SetZ(15);
-
-count = 0;
-
-fun refresh_callback () {
-  sprite.SetImage(video_image_arr[count]);
-  sprite.SetOpacity(1);
-  count++;
-  if (count >= $frame_count) {
-    count = 0;
-  }
-}
-
-Plymouth.SetRefreshFunction(refresh_callback);
-""")
+# A fullscreen mode that scaled every frame to Window.GetWidth()/GetHeight()
+# via Image.Scale() at load time was tried and reverted: scaling hundreds of
+# frames synchronously before the splash can show its first frame at all
+# measurably delayed the splash appearing at boot. If a genuinely
+# full-screen-sized animation is wanted, generate at a resolution like
+# 1920x1080 directly (see optimize_frames) instead of scaling at runtime.
 
 PLYMOUTH_TEMPLATE = Template("""\
 [Plymouth Theme]
@@ -87,7 +56,7 @@ ScriptFile=$script_file
 """)
 
 
-def generate_script(output_path: Path, frame_count: int, fullscreen: bool = False) -> None:
+def generate_script(output_path: Path, frame_count: int) -> None:
     """Write the .script file with looping support.
 
     Frame paths are written relative to the theme's ImageDir (e.g.
@@ -95,13 +64,8 @@ def generate_script(output_path: Path, frame_count: int, fullscreen: bool = Fals
     script Image() resolves paths by concatenating them onto ImageDir, so
     embedding ImageDir again here would double it up into a path that
     doesn't exist and silently fail to load any frame (blank/dark splash).
-
-    `fullscreen=True` scales every frame to the real boot screen size at
-    load time (see SCRIPT_TEMPLATE_FULLSCREEN) instead of showing it at its
-    native size centered on a black background.
     """
-    template = SCRIPT_TEMPLATE_FULLSCREEN if fullscreen else SCRIPT_TEMPLATE
-    content = template.substitute(frame_count=frame_count)
+    content = SCRIPT_TEMPLATE.substitute(frame_count=frame_count)
     output_path.write_text(content)
 
 

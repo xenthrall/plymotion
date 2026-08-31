@@ -67,12 +67,6 @@ def convert(
         64, "--colors", "-c",
         help="Max colors in each frame's PNG palette. Lower = smaller files, more banding.",
     ),
-    fullscreen: bool = typer.Option(
-        False, "--fullscreen",
-        help="Scale every frame to the real boot screen size at load time, "
-             "instead of centering it at its native size. Doesn't change the "
-             "saved frame resolution/file size.",
-    ),
     theme_name: str = typer.Option(
         "plymotion", "--theme-name", "-t",
         help="Name for the generated Plymouth theme.",
@@ -137,7 +131,7 @@ def convert(
     script_path = output_dir / f"{theme_name}-plymouth.script"
     plymouth_path = output_dir / f"{theme_name}-plymouth.plymouth"
 
-    generate_script(script_path, frame_count, fullscreen=fullscreen)
+    generate_script(script_path, frame_count)
     generate_plymouth(plymouth_path, theme_name, resolved_image_dir,
                       f"{resolved_image_dir}/{theme_name}-plymouth.script")
     typer.echo(f"  {script_path.name}")
