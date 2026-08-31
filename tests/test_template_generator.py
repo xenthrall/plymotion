@@ -42,6 +42,34 @@ def test_generate_plymouth(tmp_path: Path) -> None:
     assert "test.script" in content
 
 
+def test_generate_script_fullscreen_scales_frames_to_screen_size(tmp_path: Path) -> None:
+    """fullscreen=True scales each frame to Window.GetWidth()/GetHeight() at load
+    time, once, rather than showing frames at their native saved size."""
+    output = tmp_path / "test.script"
+    generate_script(output, 42, fullscreen=True)
+
+    content = output.read_text()
+    assert "screen_w = Window.GetWidth()" in content
+    assert "screen_h = Window.GetHeight()" in content
+    assert ".Scale(screen_w, screen_h)" in content
+    assert '"/frame" + (i + 1) + ".png"' in content
+    assert "i < 42" in content
+    assert "count >= 42" in content
+    # Scaling happens once per frame while loading, not every refresh.
+    refresh_body = content.split("fun refresh_callback ()")[1]
+    assert "Scale" not in refresh_body
+
+
+def test_generate_script_default_is_not_fullscreen(tmp_path: Path) -> None:
+    """fullscreen defaults to False: no Scale() call, sprite centered as before."""
+    output = tmp_path / "test.script"
+    generate_script(output, 10)
+
+    content = output.read_text()
+    assert "Scale" not in content
+    assert "Window.GetWidth()/2" in content
+
+
 def test_generate_script_single_frame(tmp_path: Path) -> None:
     """Single frame works without loop issues."""
     output = tmp_path / "test.script"

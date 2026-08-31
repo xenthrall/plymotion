@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import flet as ft
 
 
@@ -64,3 +66,76 @@ def test_append_log() -> None:
     assert len(log_view.controls) == 2
     assert log_view.controls[0].value == "first"
     assert log_view.controls[1].value == "second"
+
+
+class _FakeImage:
+    """Duck-typed stand-in for ft.Image: tracks src changes and update() calls.
+
+    animate_preview() only touches `.src` and `.update()`, so a real Flet
+    control (which needs a live page/session to attach to) isn't needed.
+    """
+
+    def __init__(self) -> None:
+        self.src: bytes | None = None
+        self.update_calls = 0
+
+    def update(self) -> None:
+        self.update_calls += 1
+
+
+def test_animate_preview_cycles_frames_via_control_update(tmp_path: Path) -> None:
+    """Each frame change is pushed with image.update(), not a bare page.update()
+    (a bare page.update() does not reach a control inside an open dialog)."""
+    from plymotion.ui.widgets import animate_preview
+
+    frames = []
+    for i in range(3):
+        p = tmp_path / f"frame{i}.png"
+        p.write_bytes(f"frame-{i}".encode())
+        frames.append(p)
+
+    image = _FakeImage()
+    animate_preview(image, frames, fps=1000, loops=2)  # type: ignore[arg-type]
+
+    assert image.update_calls == len(frames) * 2
+    assert image.src == frames[-1].read_bytes()
+
+
+def test_animate_preview_stops_when_cancelled(tmp_path: Path) -> None:
+    """is_cancelled() lets a closed dialog stop the loop instead of running to
+    completion in the background."""
+    from plymotion.ui.widgets import animate_preview
+
+    frames = []
+    for i in range(5):
+        p = tmp_path / f"frame{i}.png"
+        p.write_bytes(b"x")
+        frames.append(p)
+
+    image = _FakeImage()
+    seen = {"count": 0}
+
+    def is_cancelled() -> bool:
+        seen["count"] += 1
+        return seen["count"] > 2
+
+    animate_preview(image, frames, fps=1000, loops=10, is_cancelled=is_cancelled)  # type: ignore[arg-type]
+
+    assert image.update_calls == 2
+
+
+def test_animate_preview_stops_gracefully_if_control_detached(tmp_path: Path) -> None:
+    """If the control's update() raises RuntimeError (detached from the page,
+    e.g. the dialog was closed), the loop stops instead of crashing the
+    background thread."""
+    from plymotion.ui.widgets import animate_preview
+
+    class _DetachedImage(_FakeImage):
+        def update(self) -> None:
+            raise RuntimeError("Control must be added to the page first")
+
+    frames = [tmp_path / "frame0.png"]
+    frames[0].write_bytes(b"x")
+
+    animate_preview(_DetachedImage(), frames, fps=1000, loops=5)  # type: ignore[arg-type]
+    # No exception raised is the assertion here.

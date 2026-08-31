@@ -104,7 +104,6 @@ def theme_card(
 
 
 def animate_preview(
-    page: ft.Page,
     image: ft.Image,
     frames: list[Path],
     *,
@@ -114,6 +113,13 @@ def animate_preview(
 ) -> None:
     """Cycle `image.src` through `frames` for a few loops. Runs synchronously —
     call via page.run_thread() so it doesn't block the UI event loop.
+
+    Updates via `image.update()`, not a bare `page.update()`: a control shown
+    inside an open dialog (page.show_dialog()) lives in the page's separate
+    `_dialogs` stack, which a plain page.update() does not patch — only a
+    targeted control.update() (or page.update(control)) reliably reaches it,
+    which is why an earlier version of this appeared to just freeze on the
+    first frame.
 
     `is_cancelled`, if given, is a zero-arg callable checked between frames so
     a closed preview dialog can stop the loop early instead of leaking it.
@@ -126,5 +132,9 @@ def animate_preview(
             if is_cancelled is not None and is_cancelled():
                 return
             image.src = frame.read_bytes()
-            page.update()
+            try:
+                image.update()
+            except RuntimeError:
+                # The dialog (and this control) got detached mid-animation.
+                return
             time.sleep(delay)

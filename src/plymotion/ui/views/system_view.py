@@ -68,7 +68,7 @@ def build_system_view(ctx: AppContext) -> ft.Control:
         )
         page.show_dialog(dialog)
         page.run_thread(
-            widgets.animate_preview, page, image, frames,
+            widgets.animate_preview, image, frames,
             fps=12.0, loops=6, is_cancelled=lambda: cancelled["value"],
         )
 

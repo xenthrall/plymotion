@@ -113,6 +113,35 @@ def test_convert_passes_trim_options(
     assert "Loop duration on screen" in result.output
 
 
+def test_convert_fullscreen_flag_scales_frames_in_script(tmp_path: Path) -> None:
+    """--fullscreen makes the generated .script scale frames to the screen size."""
+    video = tmp_path / "input.mp4"
+    video.write_bytes(b"fake")
+    output_dir = tmp_path / "out"
+
+    result = runner.invoke(
+        app,
+        ["convert", "-i", str(video), "-o", str(output_dir), "--fullscreen"],
+    )
+
+    assert result.exit_code == 0, result.output
+    script = (output_dir / "plymotion-plymouth.script").read_text()
+    assert "Scale(screen_w, screen_h)" in script
+
+
+def test_convert_without_fullscreen_flag_does_not_scale(tmp_path: Path) -> None:
+    """Without --fullscreen, the .script keeps the centered, unscaled behavior."""
+    video = tmp_path / "input.mp4"
+    video.write_bytes(b"fake")
+    output_dir = tmp_path / "out"
+
+    result = runner.invoke(app, ["convert", "-i", str(video), "-o", str(output_dir)])
+
+    assert result.exit_code == 0, result.output
+    script = (output_dir / "plymotion-plymouth.script").read_text()
+    assert "Scale" not in script
+
+
 def test_convert_respects_custom_image_dir(tmp_path: Path) -> None:
     """--image-dir overrides the default ImageDir written into the .plymouth config."""
     video = tmp_path / "input.mp4"

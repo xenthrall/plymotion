@@ -34,6 +34,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
     trim_duration_field = ft.TextField(
         label="Duración (s, vacío = hasta el final)", width=260
     )
+    fullscreen_switch = ft.Switch(label="Pantalla completa", value=False)
 
     progress = ft.ProgressBar(value=0)
     convert_status = ft.Text("Listo para convertir", italic=True, size=12)
@@ -107,6 +108,11 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             except ValueError:
                 ctx.notify("Duración de recorte inválida: debe ser un número de segundos.")
                 return
+        try:
+            colors_val = int(colors.value or str(DEFAULT_COLORS))
+        except ValueError:
+            ctx.notify("Colores inválido: debe ser un número entero.")
+            return
 
         ctx.set_busy(True)
         progress.value = 0
@@ -114,12 +120,6 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
         ctx.set_status("Iniciando conversión...")
         ctx.log("--- Iniciando conversión ---")
         page.update()
-
-        try:
-            colors_val = int(colors.value or str(DEFAULT_COLORS))
-        except ValueError:
-            ctx.notify("Colores inválido: debe ser un número entero.")
-            return
 
         page.run_thread(
             run_convert,
@@ -130,6 +130,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             trim_start_val,
             trim_duration_val,
             colors_val,
+            fullscreen_switch.value or False,
         )
 
     def update_progress(value: int, text: str) -> None:
@@ -147,6 +148,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
         trim_start_val: float,
         trim_duration_val: float | None,
         colors_val: int,
+        fullscreen_val: bool,
     ) -> None:
         from plymotion.frame_processor import optimize_frames
         from plymotion.template_generator import (
@@ -188,7 +190,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             plymouth_path = out_dir / f"{slug}-plymouth.plymouth"
             image_dir = f"/usr/share/plymouth/themes/{slug}"
 
-            generate_script(script_path, frame_count)
+            generate_script(script_path, frame_count, fullscreen=fullscreen_val)
             generate_plymouth(
                 plymouth_path, name, image_dir, f"{image_dir}/{slug}-plymouth.script"
             )
@@ -200,6 +202,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
                 resolution=[target_w, target_h],
                 fps=fps_val,
                 colors=colors_val,
+                fullscreen=fullscreen_val,
                 loop_seconds=loop_seconds,
                 source_video=str(video),
                 trim_start=trim_start_val,
@@ -242,6 +245,11 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
         "Menos colores puede notarse en degradados suaves.",
         size=11, italic=True, color=ft.Colors.OUTLINE,
     )
+    fullscreen_hint = ft.Text(
+        "Escala cada frame a la resolución real de pantalla en el propio arranque "
+        "(no afecta el tamaño de los archivos guardados arriba).",
+        size=11, italic=True, color=ft.Colors.OUTLINE,
+    )
 
     return ft.Column(
         spacing=14,
@@ -251,6 +259,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             hint_text,
             ft.Row(options_row, wrap=True),
             size_hint,
+            ft.Row([fullscreen_switch, fullscreen_hint]),
             progress,
             convert_status,
             ft.Row([convert_btn]),
