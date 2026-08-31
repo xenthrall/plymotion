@@ -10,11 +10,13 @@ import pytest
 
 import plymotion.installer as installer
 from plymotion.installer import (
+    activate_theme,
     install_theme,
     list_installed_themes,
     preview_installed_theme,
     reset_to_default,
     restore_backup,
+    uninstall_theme,
     validate_theme,
 )
 
@@ -252,6 +254,85 @@ def test_list_installed_themes_skips_unparseable_plymouth_file(
 
     monkeypatch.setattr(installer, "THEMES_DIR", themes_dir)
     assert list_installed_themes() == []
+
+
+def _make_installed_theme(themes_dir: Path, dir_name: str) -> Path:
+    theme_dir = themes_dir / dir_name
+    theme_dir.mkdir(parents=True)
+    plymouth_file = theme_dir / f"{dir_name}.plymouth"
+    plymouth_file.write_text(f"[Plymouth Theme]\nName={dir_name}\nModuleName=script\n")
+    return plymouth_file
+
+
+def test_activate_theme_runs_privileged_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """activate_theme only flips default.plymouth + rebuilds initramfs, no copy."""
+    themes_dir = tmp_path / "themes"
+    plymouth_file = _make_installed_theme(themes_dir, "mytheme")
+
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "THEMES_DIR", themes_dir)
+
+    activate_theme("mytheme")
+
+    script = fake_run.script
+    assert f"update-alternatives --set default.plymouth {plymouth_file}" in script
+    assert "update-initramfs -u" in script
+    assert "cp -r" not in script
+
+
+def test_activate_theme_rejects_unknown_theme(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "THEMES_DIR", tmp_path / "themes")
+
+    with pytest.raises(ValueError):
+        activate_theme("does-not-exist")
+    assert fake_run.calls == []
+
+
+def test_uninstall_theme_runs_privileged_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    themes_dir = tmp_path / "themes"
+    plymouth_file = _make_installed_theme(themes_dir, "mytheme")
+
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "THEMES_DIR", themes_dir)
+
+    uninstall_theme("mytheme")
+
+    script = fake_run.script
+    assert f"update-alternatives --remove default.plymouth {plymouth_file}" in script
+    assert f"rm -rf {themes_dir / 'mytheme'}" in script
+    assert "update-initramfs -u" in script
+    assert "update-alternatives --set default.plymouth" in script  # the conditional fallback
+
+
+def test_uninstall_theme_rejects_unknown_theme(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "THEMES_DIR", tmp_path / "themes")
+
+    with pytest.raises(ValueError):
+        uninstall_theme("does-not-exist")
+    assert fake_run.calls == []
+
+
+def test_uninstall_theme_refuses_text_theme(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError, match="text theme"):
+        uninstall_theme("text")
+    assert fake_run.calls == []
 
 
 def test_preview_installed_theme_runs_privileged_script(monkeypatch: pytest.MonkeyPatch) -> None:

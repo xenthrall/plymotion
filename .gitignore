@@ -13,3 +13,4 @@ dist/
 # Plymotion generated output
 /plymotion-output/
 plymotion-*/
+/library/

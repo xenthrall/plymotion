@@ -176,6 +176,52 @@ update-initramfs -u
     return True
 
 
+def _find_installed_plymouth_file(theme_dir_name: str) -> Path | None:
+    theme_dir = THEMES_DIR / theme_dir_name
+    matches = list(theme_dir.glob("*.plymouth")) if theme_dir.is_dir() else []
+    return matches[0] if matches else None
+
+
+def activate_theme(theme_dir_name: str) -> None:
+    """Point the system default at an already-installed theme.
+
+    Unlike install_theme(), this does not copy any files — it only flips
+    which already-installed theme is the default.
+    """
+    plymouth_file = _find_installed_plymouth_file(theme_dir_name)
+    if plymouth_file is None:
+        raise ValueError(f"Theme '{theme_dir_name}' is not installed under {THEMES_DIR}")
+
+    script = f"""set -e
+update-alternatives --set default.plymouth {shlex.quote(str(plymouth_file))}
+update-initramfs -u
+"""
+    _run_privileged(script)
+
+
+def uninstall_theme(theme_dir_name: str) -> None:
+    """Remove an installed theme, falling back to the text theme first if it's the default."""
+    if theme_dir_name == TEXT_THEME_PLYMOUTH.parent.name:
+        raise ValueError("Refusing to uninstall the built-in text theme (safety fallback).")
+
+    plymouth_file = _find_installed_plymouth_file(theme_dir_name)
+    if plymouth_file is None:
+        raise ValueError(f"Theme '{theme_dir_name}' is not installed under {THEMES_DIR}")
+
+    dest = THEMES_DIR / theme_dir_name
+    default_link = THEMES_DIR / "default.plymouth"
+    script = f"""set -e
+if [ "$(readlink -f {shlex.quote(str(default_link))})" = \
+"$(readlink -f {shlex.quote(str(plymouth_file))})" ]; then
+    update-alternatives --set default.plymouth {shlex.quote(str(TEXT_THEME_PLYMOUTH))}
+fi
+update-alternatives --remove default.plymouth {shlex.quote(str(plymouth_file))}
+rm -rf {shlex.quote(str(dest))}
+update-initramfs -u
+"""
+    _run_privileged(script)
+
+
 def reset_to_default() -> None:
     """Point Plymouth back at the plain text theme and regenerate the initramfs."""
     script = f"""set -e
