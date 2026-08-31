@@ -151,7 +151,11 @@ cp -r {shlex.quote(str(source_dir))} {shlex.quote(str(dest))}
 plymouth_file=$(find {shlex.quote(str(dest))} -maxdepth 1 -name '*.plymouth' | head -n1)
 update-alternatives --install /usr/share/plymouth/themes/default.plymouth \
 default.plymouth "$plymouth_file" {int(priority)}
-update-initramfs -u
+# -k all: plain `-u` only rebuilds the initramfs of the kernel that was
+# "current" when this ran, which can silently differ from the kernel that
+# actually gets booted next (e.g. right after a kernel upgrade), leaving
+# the old theme baked into the boot image the user actually sees.
+update-initramfs -u -k all
 """
     _run_privileged(script)
 
@@ -170,7 +174,7 @@ def restore_backup(theme_name: str = "plymotion") -> bool:
     script = f"""set -e
 rm -rf {shlex.quote(str(dest))}
 cp -r {shlex.quote(str(backup_path))} {shlex.quote(str(dest))}
-update-initramfs -u
+update-initramfs -u -k all
 """
     _run_privileged(script)
     return True
@@ -194,7 +198,7 @@ def activate_theme(theme_dir_name: str) -> None:
 
     script = f"""set -e
 update-alternatives --set default.plymouth {shlex.quote(str(plymouth_file))}
-update-initramfs -u
+update-initramfs -u -k all
 """
     _run_privileged(script)
 
@@ -217,7 +221,7 @@ if [ "$(readlink -f {shlex.quote(str(default_link))})" = \
 fi
 update-alternatives --remove default.plymouth {shlex.quote(str(plymouth_file))}
 rm -rf {shlex.quote(str(dest))}
-update-initramfs -u
+update-initramfs -u -k all
 """
     _run_privileged(script)
 
@@ -226,7 +230,7 @@ def reset_to_default() -> None:
     """Point Plymouth back at the plain text theme and regenerate the initramfs."""
     script = f"""set -e
 update-alternatives --set default.plymouth {shlex.quote(str(TEXT_THEME_PLYMOUTH))}
-update-initramfs -u
+update-initramfs -u -k all
 """
     _run_privileged(script)
 
