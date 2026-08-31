@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+from typing import Any
 
-from plymotion.installer import validate_theme
+import pytest
+
+import plymotion.installer as installer
+from plymotion.installer import (
+    install_theme,
+    preview_installed_theme,
+    reset_to_default,
+    restore_backup,
+    validate_theme,
+)
 
 
 def _make_theme(directory: Path, *, with_script: bool = True, with_frames: bool = True) -> None:
@@ -66,3 +77,140 @@ def test_validate_no_frames(tmp_path: Path) -> None:
     _make_theme(tmp_path, with_frames=False)
     errors = validate_theme(tmp_path)
     assert any("frame" in e.lower() for e in errors)
+
+
+class _FakeRun:
+    """Captures the argv passed to subprocess.run, without executing anything."""
+
+    def __init__(self, returncode: int = 0, stderr: str = "") -> None:
+        self.returncode = returncode
+        self.stderr = stderr
+        self.calls: list[list[str]] = []
+
+    def __call__(self, argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        self.calls.append(argv)
+        return subprocess.CompletedProcess(argv, self.returncode, stdout="", stderr=self.stderr)
+
+    @property
+    def script(self) -> str:
+        """The bash -c script from the sole captured pkexec call."""
+        assert len(self.calls) == 1
+        argv = self.calls[0]
+        assert argv[:2] == ["pkexec", "bash"]
+        assert argv[2] == "-c"
+        return argv[3]
+
+
+def test_install_theme_runs_privileged_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """install_theme validates locally, then does everything else as one pkexec script."""
+    source = tmp_path / "source"
+    source.mkdir()
+    _make_theme(source)
+
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "THEMES_DIR", tmp_path / "themes")
+    monkeypatch.setattr(installer, "BACKUP_DIR", tmp_path / "backups")
+
+    install_theme(source, theme_name="mytheme", priority=100)
+
+    script = fake_run.script
+    assert "mkdir -p" in script
+    assert str(tmp_path / "backups") in script
+    assert f"cp -r {source}" in script
+    assert str(tmp_path / "themes" / "mytheme") in script
+    assert "update-alternatives --install" in script
+    assert "default.plymouth" in script
+    assert "100" in script
+    assert "update-initramfs -u" in script
+
+
+def test_install_theme_rejects_invalid_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An invalid theme is rejected before any privileged command runs."""
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError):
+        install_theme(tmp_path, theme_name="mytheme")
+
+    assert fake_run.calls == []
+
+
+def test_install_theme_raises_with_pkexec_stderr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pkexec/script failure surfaces its stderr as the exception message."""
+    source = tmp_path / "source"
+    source.mkdir()
+    _make_theme(source)
+
+    fake_run = _FakeRun(returncode=1, stderr="Authorization failed")
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "THEMES_DIR", tmp_path / "themes")
+    monkeypatch.setattr(installer, "BACKUP_DIR", tmp_path / "backups")
+
+    with pytest.raises(RuntimeError, match="Authorization failed"):
+        install_theme(source, theme_name="mytheme")
+
+
+def test_restore_backup_without_existing_backup_is_a_noop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """restore_backup returns False and never touches the system if there's no backup."""
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "BACKUP_DIR", tmp_path / "backups")
+
+    assert restore_backup("mytheme") is False
+    assert fake_run.calls == []
+
+
+def test_restore_backup_runs_privileged_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """restore_backup copies the backup over the theme dir and updates initramfs."""
+    backup_dir = tmp_path / "backups"
+    (backup_dir / "mytheme").mkdir(parents=True)
+
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+    monkeypatch.setattr(installer, "BACKUP_DIR", backup_dir)
+    monkeypatch.setattr(installer, "THEMES_DIR", tmp_path / "themes")
+
+    assert restore_backup("mytheme") is True
+
+    script = fake_run.script
+    assert str(backup_dir / "mytheme") in script
+    assert str(tmp_path / "themes" / "mytheme") in script
+    assert "update-initramfs -u" in script
+
+
+def test_reset_to_default_runs_privileged_script(monkeypatch: pytest.MonkeyPatch) -> None:
+    """reset_to_default points update-alternatives at the text theme."""
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+
+    reset_to_default()
+
+    script = fake_run.script
+    assert "update-alternatives --set default.plymouth" in script
+    assert str(installer.TEXT_THEME_PLYMOUTH) in script
+    assert "update-initramfs -u" in script
+
+
+def test_preview_installed_theme_runs_privileged_script(monkeypatch: pytest.MonkeyPatch) -> None:
+    """preview_installed_theme drives plymouthd/plymouth through pkexec."""
+    fake_run = _FakeRun()
+    monkeypatch.setattr(installer.subprocess, "run", fake_run)
+
+    preview_installed_theme(seconds=9)
+
+    script = fake_run.script
+    assert "plymouthd --no-daemon --debug" in script
+    assert "plymouth --show-splash" in script
+    assert "sleep 9" in script
+    assert "plymouth --quit" in script
