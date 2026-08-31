@@ -4,7 +4,7 @@ Convierte cualquier video en una animación de arranque personalizada para tu si
 
 ## Características
 
-- **GUI con tkinter**: Interfaz gráfica para seleccionar videos desde el gestor de archivos
+- **GUI con Flet**: Interfaz gráfica moderna (Material Design) para seleccionar videos desde el gestor de archivos
 - **CLI en Python**: Herramienta de línea de comandos para automatización
 - **Frame-by-frame**: Extrae frames del video y los convierte en una secuencia de animación
 - **Loop infinito**: La animación se repite continuamente durante el boot
@@ -79,7 +79,8 @@ generar los frames y abrir la carpeta de salida.
 # 1. Instalar dependencias (una sola vez)
 uv sync --all-extras
 
-# 2. Lanzar la GUI
+# 2. Lanzar la GUI (Flet). La primera vez descarga el cliente de escritorio
+#    de Flet (requiere red); los siguientes arranques son instantáneos.
 uv run plymotion gui
 # Examinar → elegir tu video → Convertir
 # El panel "Registro" muestra cada paso; al terminar se habilita
@@ -167,8 +168,8 @@ plymotion/
 │   ├── installer.py            # Instalación segura del theme
 │   └── ui/
 │       ├── __init__.py
-│       ├── app.py              # Ventana principal tkinter
-│       └── widgets.py          # Widgets reutilizables
+│       ├── app.py              # Ventana principal Flet
+│       └── widgets.py          # Helpers reutilizables (dropdowns, log)
 ├── tests/
 │   ├── test_frame_processor.py
 │   ├── test_template_generator.py
@@ -183,7 +184,7 @@ plymotion/
 
 ### Arquitectura UI/Lógica
 
-La UI (tkinter) es solo una capa de presentación. Toda la lógica vive en módulos independientes:
+La UI ([Flet](https://flet.dev)) es solo una capa de presentación. Toda la lógica vive en módulos independientes:
 - `video_extractor.py` - Extracción de frames
 - `frame_processor.py` - Optimización de imágenes
 - `template_generator.py` - Generación de archivos Plymouth
