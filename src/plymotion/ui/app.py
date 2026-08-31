@@ -1,5 +1,5 @@
 """Plymotion main GUI window (Flet): sidebar shell wiring the Convertir,
-Galería, and Sistema views together through a shared AppContext."""
+Galería, Sistema, and Restaurar views together through a shared AppContext."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from plymotion import __version__, library
 from plymotion.ui.context import AppContext
 from plymotion.ui.views.convert_view import build_convert_view
 from plymotion.ui.views.gallery_view import build_gallery_view
+from plymotion.ui.views.restore_view import build_restore_view
 from plymotion.ui.views.system_view import build_system_view
 from plymotion.ui.widgets import append_log
 
@@ -113,12 +114,18 @@ async def main(page: ft.Page) -> None:
     convert_control = build_convert_view(ctx)
     gallery_control = build_gallery_view(ctx)
     system_control = build_system_view(ctx)
-    views = [convert_control, gallery_control, system_control]
+    restore_control = build_restore_view(ctx)
+    views = [convert_control, gallery_control, system_control, restore_control]
 
     content_area = ft.Container(content=views[0], expand=True, padding=24)
 
     def on_nav_change(e: Any) -> None:
         content_area.content = views[e.control.selected_index]
+        page.update()
+
+    def switch_view(index: int) -> None:
+        nav_rail.selected_index = index
+        content_area.content = views[index]
         page.update()
 
     # --- Theme mode toggle (persisted) -----------------------------------
@@ -169,11 +176,17 @@ async def main(page: ft.Page) -> None:
                 selected_icon=ft.Icons.DESKTOP_WINDOWS,
                 label="Sistema",
             ),
+            ft.NavigationRailDestination(
+                icon=ft.Icons.BURST_MODE_OUTLINED,
+                selected_icon=ft.Icons.BURST_MODE,
+                label="Restaurar",
+            ),
         ],
         trailing=theme_toggle,
         pin_trailing_to_bottom=True,
         on_change=on_nav_change,
     )
+    ctx.switch_view = switch_view
 
     page.add(
         ft.Row(

@@ -23,11 +23,13 @@ def test_view_modules_import() -> None:
     """Each view module and its builder function import without error."""
     from plymotion.ui.views.convert_view import build_convert_view
     from plymotion.ui.views.gallery_view import build_gallery_view
+    from plymotion.ui.views.restore_view import build_restore_view
     from plymotion.ui.views.system_view import build_system_view
 
     assert build_convert_view is not None
     assert build_gallery_view is not None
     assert build_system_view is not None
+    assert build_restore_view is not None
 
 
 def test_context_and_widgets_import() -> None:

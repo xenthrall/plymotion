@@ -25,6 +25,8 @@ class AppContext:
     busy_listeners: list[Callable[[bool], None]] = field(default_factory=list)
     refresh_gallery: Callable[[], None] = lambda: None
     refresh_system: Callable[[], None] = lambda: None
+    switch_view: Callable[[int], None] = lambda index: None
+    load_video_into_convert: Callable[[str], None] = lambda path: None
 
     def on_busy_change(self, listener: Callable[[bool], None]) -> None:
         """Register a callback invoked whenever the shared busy gate flips.

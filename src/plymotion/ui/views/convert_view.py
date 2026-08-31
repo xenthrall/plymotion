@@ -69,6 +69,13 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             hint_text.value = f"(No se pudo leer info del video: {exc})"
         page.update()
 
+    def load_video(path: str) -> None:
+        video_path.value = path
+        page.update()
+        show_video_info(path)
+
+    ctx.load_video_into_convert = load_video
+
     def start_convert() -> None:
         if ctx.is_busy():
             ctx.notify("Espera a que termine la operación actual.")

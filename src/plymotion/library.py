@@ -13,13 +13,13 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from plymotion.sorting import natural_sort_key
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LIBRARY_DIR = PROJECT_ROOT / "library"
 LIBRARY_THEMES_DIR = LIBRARY_DIR / "themes"
 MANIFEST_NAME = "theme.json"
 PREFS_FILE = LIBRARY_DIR / "prefs.json"
-
-_FRAME_NUMBER_RE = re.compile(r"(\d+)")
 
 
 def slugify(name: str) -> str:
@@ -59,13 +59,8 @@ def save_manifest(theme_dir: Path, **metadata: object) -> None:
     (theme_dir / MANIFEST_NAME).write_text(json.dumps(metadata, indent=2))
 
 
-def _frame_sort_key(path: Path) -> int:
-    match = _FRAME_NUMBER_RE.search(path.stem)
-    return int(match.group(1)) if match else 0
-
-
 def _sorted_frames(theme_dir: Path) -> list[Path]:
-    return sorted(theme_dir.glob("frame*.png"), key=_frame_sort_key)
+    return sorted(theme_dir.glob("frame*.png"), key=natural_sort_key)
 
 
 def list_library_themes() -> list[LibraryTheme]:
