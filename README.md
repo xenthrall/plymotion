@@ -142,8 +142,9 @@ plymotion/
 │   ├── test_cli.py
 │   ├── test_installer.py
 │   └── test_ui.py
-├── plymotion-plymouth.plymouth
-├── plymotion-plymouth.script
+├── examples/
+│   ├── legacy-manual-theme.plymouth  # Theme de referencia escrito a mano
+│   └── legacy-manual-theme.script    # (anterior al generador automático)
 └── README.md
 ```
 
