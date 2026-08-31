@@ -44,8 +44,10 @@ def convert(
         help="Output directory for generated theme.",
     ),
     resolution: str = typer.Option(
-        "1920x1080", "--resolution", "-r",
-        help="Target resolution as WxH (e.g. 1920x1080).",
+        "320x240", "--resolution", "-r",
+        help="Max animation size as WxH, aspect-preserved (e.g. 320x240). "
+             "Plymouth centers this on the boot screen itself, so it doesn't need to "
+             "match screen resolution; smaller means far lighter frames.",
     ),
     fps: int = typer.Option(
         30, "--fps", "-f",
@@ -58,6 +60,12 @@ def convert(
     trim_duration: float | None = typer.Option(
         None, "--trim-duration", "-d",
         help="Length in seconds to extract from --trim-start (default: to the end).",
+    ),
+    colors: int = typer.Option(
+        # Keep in sync with frame_processor.DEFAULT_COLORS (not imported
+        # eagerly here so `--help` stays fast; frame_processor pulls in PIL).
+        64, "--colors", "-c",
+        help="Max colors in each frame's PNG palette. Lower = smaller files, more banding.",
     ),
     theme_name: str = typer.Option(
         "plymotion", "--theme-name", "-t",
@@ -115,15 +123,15 @@ def convert(
 
     # Step 2: Optimize frames
     typer.echo("Optimizing frames...")
-    optimize_frames(output_dir, (target_w, target_h))
-    typer.echo(f"  Optimized {frame_count} frames to {target_w}x{target_h}.")
+    optimize_frames(output_dir, (target_w, target_h), colors=colors)
+    typer.echo(f"  Optimized {frame_count} frames to fit {target_w}x{target_h}, {colors} colors.")
 
     # Step 3: Generate theme files
     typer.echo("Generating Plymouth theme files...")
     script_path = output_dir / f"{theme_name}-plymouth.script"
     plymouth_path = output_dir / f"{theme_name}-plymouth.plymouth"
 
-    generate_script(script_path, frame_count, resolved_image_dir)
+    generate_script(script_path, frame_count)
     generate_plymouth(plymouth_path, theme_name, resolved_image_dir,
                       f"{resolved_image_dir}/{theme_name}-plymouth.script")
     typer.echo(f"  {script_path.name}")

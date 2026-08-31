@@ -12,14 +12,19 @@ from plymotion.template_generator import estimate_loop_seconds, generate_plymout
 def test_generate_script(tmp_path: Path) -> None:
     """Script file contains correct frame count and loop."""
     output = tmp_path / "test.script"
-    generate_script(output, 100, "/usr/share/plymouth/themes/plymotion")
+    generate_script(output, 100)
 
     content = output.read_text()
     assert "i < 100" in content
     assert "if (count >= 100)" in content
     assert "count = 0" in content
     assert "Plymouth.SetRefreshFunction" in content
-    assert "/usr/share/plymouth/themes/plymotion/frame" in content
+    # Frame paths must be relative to ImageDir ("/frameN.png"), not a
+    # baked-in absolute install path — Plymouth's Image() concatenates the
+    # given path onto ImageDir, so embedding ImageDir here too would double
+    # it up into a path that doesn't exist (silently blank/dark splash).
+    assert '"/frame" + (i + 1) + ".png"' in content
+    assert "/usr/share/plymouth" not in content
     # Should NOT contain ImageDir (that's for .plymouth)
     assert "ImageDir" not in content
 
@@ -40,7 +45,7 @@ def test_generate_plymouth(tmp_path: Path) -> None:
 def test_generate_script_single_frame(tmp_path: Path) -> None:
     """Single frame works without loop issues."""
     output = tmp_path / "test.script"
-    generate_script(output, 1, "/frames")
+    generate_script(output, 1)
 
     content = output.read_text()
     assert "i < 1" in content

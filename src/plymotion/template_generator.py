@@ -14,7 +14,7 @@ PLYMOUTH_DEFAULT_REFRESH_RATE = 50
 
 SCRIPT_TEMPLATE = Template("""\
 for(i = 0; i < $frame_count; i++)
-  video_image_arr[i] = Image("$image_dir/frame" + (i + 1) + ".png");
+  video_image_arr[i] = Image("/frame" + (i + 1) + ".png");
 
 pos_x = Window.GetWidth()/2 - video_image_arr[0].GetWidth()/2;
 pos_y = Window.GetHeight()/2 - video_image_arr[0].GetHeight()/2;
@@ -50,12 +50,16 @@ ScriptFile=$script_file
 """)
 
 
-def generate_script(output_path: Path, frame_count: int, image_dir: str) -> None:
-    """Write the .script file with looping support."""
-    content = SCRIPT_TEMPLATE.substitute(
-        frame_count=frame_count,
-        image_dir=image_dir,
-    )
+def generate_script(output_path: Path, frame_count: int) -> None:
+    """Write the .script file with looping support.
+
+    Frame paths are written relative to the theme's ImageDir (e.g.
+    "/frame1.png"), not as a baked-in absolute install path: Plymouth's
+    script Image() resolves paths by concatenating them onto ImageDir, so
+    embedding ImageDir again here would double it up into a path that
+    doesn't exist and silently fail to load any frame (blank/dark splash).
+    """
+    content = SCRIPT_TEMPLATE.substitute(frame_count=frame_count)
     output_path.write_text(content)
 
 

@@ -67,8 +67,13 @@ def test_convert_flat_layout_and_default_image_dir(tmp_path: Path) -> None:
     assert not (output_dir / "frames").exists()
     assert (output_dir / "frame1.png").is_file()
 
+    # The .script references frames relative to ImageDir ("/frameN.png"),
+    # not a baked-in absolute path; ImageDir itself lives in the .plymouth.
     script = (output_dir / "mytheme-plymouth.script").read_text()
-    assert "/usr/share/plymouth/themes/mytheme/frame" in script
+    assert '"/frame" + (i + 1) + ".png"' in script
+
+    plymouth = (output_dir / "mytheme-plymouth.plymouth").read_text()
+    assert "ImageDir=/usr/share/plymouth/themes/mytheme" in plymouth
 
 
 def test_convert_passes_trim_options(
@@ -109,7 +114,7 @@ def test_convert_passes_trim_options(
 
 
 def test_convert_respects_custom_image_dir(tmp_path: Path) -> None:
-    """--image-dir overrides the default ImageDir written into the theme."""
+    """--image-dir overrides the default ImageDir written into the .plymouth config."""
     video = tmp_path / "input.mp4"
     video.write_bytes(b"fake")
     output_dir = tmp_path / "out"
@@ -120,5 +125,5 @@ def test_convert_respects_custom_image_dir(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0, result.output
-    script = (output_dir / "plymotion-plymouth.script").read_text()
-    assert "/opt/custom/frame" in script
+    plymouth = (output_dir / "plymotion-plymouth.plymouth").read_text()
+    assert "ImageDir=/opt/custom" in plymouth

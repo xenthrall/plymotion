@@ -9,8 +9,17 @@ from typing import Any, cast
 
 import flet as ft
 
-RESOLUTIONS = ["1920x1080", "1366x768", "1280x720", "2560x1440", "3840x2160"]
+# Boot splash sprites don't need to match the screen's native resolution —
+# Plymouth just centers this image on top of an otherwise black boot
+# console — so these are deliberately modest: bigger sizes mean bigger,
+# slower-to-generate PNG frames for no visual benefit at typical splash
+# sizes. Users who want more can still type a custom value. For busy/
+# photographic source video, only the smaller presets realistically get
+# each frame under ~5KB; flatter, illustration-style content (logos,
+# GIF-sourced animations) hits that at larger sizes too.
+RESOLUTIONS = ["160x120", "240x180", "320x240", "480x360", "640x480"]
 FPS_OPTIONS = ["15", "24", "30", "60"]
+COLOR_OPTIONS = ["16", "32", "64", "128", "256"]
 
 CARD_WIDTH = 220
 THUMBNAIL_HEIGHT = 124

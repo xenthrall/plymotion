@@ -9,8 +9,9 @@ from typing import Any, cast
 import flet as ft
 
 from plymotion import library
+from plymotion.frame_processor import DEFAULT_COLORS
 from plymotion.ui.context import AppContext
-from plymotion.ui.widgets import FPS_OPTIONS, RESOLUTIONS, dropdown_options
+from plymotion.ui.widgets import COLOR_OPTIONS, FPS_OPTIONS, RESOLUTIONS, dropdown_options
 
 _ALLOWED_EXTENSIONS = ["mp4", "mkv", "webm", "avi", "mov", "m4v", "gif"]
 
@@ -21,9 +22,14 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
     video_path = ft.TextField(label="Video o GIF", read_only=True, expand=True)
     theme_name = ft.TextField(label="Nombre del theme", value="Mi theme", width=200)
     resolution = ft.Dropdown(
-        label="Resolución", value="1920x1080", options=dropdown_options(RESOLUTIONS), width=170
+        label="Tamaño máx. de la animación", value="320x240",
+        options=dropdown_options(RESOLUTIONS), width=210, editable=True,
     )
     fps = ft.Dropdown(label="FPS", value="30", options=dropdown_options(FPS_OPTIONS), width=100)
+    colors = ft.Dropdown(
+        label="Colores", value=str(DEFAULT_COLORS),
+        options=dropdown_options(COLOR_OPTIONS), width=110, editable=True,
+    )
     trim_start_field = ft.TextField(label="Inicio (s)", value="0", width=100)
     trim_duration_field = ft.TextField(
         label="Duración (s, vacío = hasta el final)", width=260
@@ -109,14 +115,21 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
         ctx.log("--- Iniciando conversión ---")
         page.update()
 
+        try:
+            colors_val = int(colors.value or str(DEFAULT_COLORS))
+        except ValueError:
+            ctx.notify("Colores inválido: debe ser un número entero.")
+            return
+
         page.run_thread(
             run_convert,
             video,
-            resolution.value or "1920x1080",
+            resolution.value or "320x240",
             fps.value or "30",
             theme_name.value or "plymotion",
             trim_start_val,
             trim_duration_val,
+            colors_val,
         )
 
     def update_progress(value: int, text: str) -> None:
@@ -133,6 +146,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
         name: str,
         trim_start_val: float,
         trim_duration_val: float | None,
+        colors_val: int,
     ) -> None:
         from plymotion.frame_processor import optimize_frames
         from plymotion.template_generator import (
@@ -161,16 +175,20 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             )
             update_progress(33, f"Extraídos {frame_count} frames")
 
-            update_progress(40, "Optimizando frames...")
-            optimize_frames(out_dir, (target_w, target_h))
-            update_progress(70, f"Optimizados a {target_w}x{target_h}")
+            update_progress(40, "Optimizando frames (redimensionando y reduciendo paleta)...")
+            optimize_frames(out_dir, (target_w, target_h), colors=colors_val)
+            total_bytes = sum(f.stat().st_size for f in out_dir.glob("frame*.png"))
+            avg_kb = (total_bytes / frame_count / 1024) if frame_count else 0
+            update_progress(
+                70, f"Optimizados: {colors_val} colores, ~{avg_kb:.1f} KB/frame en promedio"
+            )
 
             update_progress(80, "Generando archivos Plymouth...")
             script_path = out_dir / f"{slug}-plymouth.script"
             plymouth_path = out_dir / f"{slug}-plymouth.plymouth"
             image_dir = f"/usr/share/plymouth/themes/{slug}"
 
-            generate_script(script_path, frame_count, image_dir)
+            generate_script(script_path, frame_count)
             generate_plymouth(
                 plymouth_path, name, image_dir, f"{image_dir}/{slug}-plymouth.script"
             )
@@ -181,6 +199,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
                 frame_count=frame_count,
                 resolution=[target_w, target_h],
                 fps=fps_val,
+                colors=colors_val,
                 loop_seconds=loop_seconds,
                 source_video=str(video),
                 trim_start=trim_start_val,
@@ -191,7 +210,8 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             update_progress(
                 100,
                 f"Listo! {frame_count} frames ≈ {loop_seconds:.1f}s de reproducción en loop "
-                f"(Plymouth refresca a ~50Hz, tasa fija). Guardado en la galería como '{name}'.",
+                f"(Plymouth refresca a ~50Hz, tasa fija). ~{avg_kb:.1f} KB/frame. "
+                f"Guardado en la galería como '{name}'.",
             )
             ctx.set_status("Conversión completada")
             ctx.log("--- Conversión completada ---")
@@ -215,7 +235,12 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
     )
     options_row = cast(
         "list[ft.Control]",
-        [resolution, fps, theme_name, trim_start_field, trim_duration_field],
+        [resolution, colors, fps, theme_name, trim_start_field, trim_duration_field],
+    )
+    size_hint = ft.Text(
+        "Tamaño y colores más bajos = frames más livianos y arranque más rápido. "
+        "Menos colores puede notarse en degradados suaves.",
+        size=11, italic=True, color=ft.Colors.OUTLINE,
     )
 
     return ft.Column(
@@ -225,6 +250,7 @@ def build_convert_view(ctx: AppContext) -> ft.Control:
             ft.Row(video_row),
             hint_text,
             ft.Row(options_row, wrap=True),
+            size_hint,
             progress,
             convert_status,
             ft.Row([convert_btn]),
