@@ -18,10 +18,11 @@ def root() -> tk.Tk:
 
 def test_widgets_import() -> None:
     """Widgets module imports without error."""
-    from plymotion.ui.widgets import FilePicker, LabeledCombo, StatusBar
+    from plymotion.ui.widgets import FilePicker, LabeledCombo, LogPanel, StatusBar
     assert FilePicker is not None
     assert LabeledCombo is not None
     assert StatusBar is not None
+    assert LogPanel is not None
 
 
 def test_app_import() -> None:
@@ -49,3 +50,36 @@ def test_status_bar(root: tk.Tk) -> None:
     assert bar.cget("text") == "Working"
     bar.clear()
     assert bar.cget("text") == "Listo"
+
+
+def test_log_panel(root: tk.Tk) -> None:
+    """LogPanel accumulates lines and can be cleared."""
+    from plymotion.ui.widgets import LogPanel
+
+    panel = LogPanel(root)
+    panel.pack()
+    panel.append("first")
+    panel.append("second")
+
+    content = panel._text.get("1.0", "end")
+    assert "first" in content
+    assert "second" in content
+
+    panel.clear()
+    assert panel._text.get("1.0", "end").strip() == ""
+
+
+def test_file_picker_on_change_callback(root: tk.Tk) -> None:
+    """FilePicker invokes on_change when a value is set via _browse-equivalent."""
+    from plymotion.ui.widgets import FilePicker
+
+    seen: list[str] = []
+    picker = FilePicker(root, on_change=seen.append)
+    picker.pack()
+
+    # Simulate what _browse does after a user picks a file.
+    picker._path.set("dummy.mp4")
+    if picker._on_change is not None:
+        picker._on_change(picker.get())
+
+    assert seen == ["dummy.mp4"]

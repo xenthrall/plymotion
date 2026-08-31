@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from collections.abc import Callable
 from tkinter import ttk
 
 
@@ -14,6 +15,7 @@ class FilePicker(ttk.Frame):
         master: tk.Widget,
         label: str = "File",
         filetypes: list[tuple[str, str]] | None = None,
+        on_change: Callable[[str], None] | None = None,
         **kwargs,
     ) -> None:
         super().__init__(master, **kwargs)
@@ -21,6 +23,7 @@ class FilePicker(ttk.Frame):
             ("Video files", "*.mp4 *.webm *.avi *.mkv *.mov"),
             ("All files", "*.*"),
         ]
+        self._on_change = on_change
         self._path = tk.StringVar()
 
         ttk.Label(self, text=label).grid(row=0, column=0, sticky="w", padx=(0, 5))
@@ -35,6 +38,8 @@ class FilePicker(ttk.Frame):
         path = filedialog.askopenfilename(filetypes=self._filetypes)
         if path:
             self._path.set(path)
+            if self._on_change is not None:
+                self._on_change(path)
 
     def get(self) -> str:
         return self._path.get()
@@ -66,6 +71,40 @@ class LabeledCombo(ttk.Frame):
 
     def get(self) -> str:
         return self._var.get()
+
+
+class LogPanel(ttk.Frame):
+    """Scrollable, read-only log of step-by-step conversion messages."""
+
+    def __init__(self, master: tk.Widget, height: int = 8, **kwargs) -> None:
+        super().__init__(master, **kwargs)
+
+        self._text = tk.Text(
+            self,
+            height=height,
+            wrap="word",
+            state="disabled",
+            font=("monospace", 9),
+        )
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=self._text.yview)
+        self._text.configure(yscrollcommand=scrollbar.set)
+
+        self._text.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+    def append(self, line: str) -> None:
+        """Add a line to the log and scroll to the bottom."""
+        self._text.configure(state="normal")
+        self._text.insert("end", line + "\n")
+        self._text.configure(state="disabled")
+        self._text.see("end")
+
+    def clear(self) -> None:
+        self._text.configure(state="normal")
+        self._text.delete("1.0", "end")
+        self._text.configure(state="disabled")
 
 
 class StatusBar(ttk.Label):

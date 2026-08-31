@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
 from plymotion import __version__
-from plymotion.ui.widgets import FilePicker, LabeledCombo, StatusBar
+from plymotion.ui.widgets import FilePicker, LabeledCombo, LogPanel, StatusBar
 
 RESOLUTIONS = ["1920x1080", "1366x768", "1280x720", "2560x1440", "3840x2160"]
 FPS_OPTIONS = ["15", "24", "30", "60"]
@@ -20,8 +22,8 @@ class PlymotionApp:
     def __init__(self) -> None:
         self._root = tk.Tk()
         self._root.title(f"Plymotion v{__version__}")
-        self._root.geometry("520x380")
-        self._root.resizable(False, False)
+        self._root.geometry("600x560")
+        self._root.minsize(560, 480)
         self._root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._converting = False
@@ -41,7 +43,7 @@ class PlymotionApp:
         ).pack(anchor="w", pady=(0, 10))
 
         # File picker
-        self._file_picker = FilePicker(main, label="Video:")
+        self._file_picker = FilePicker(main, label="Video:", on_change=self._on_video_selected)
         self._file_picker.pack(fill="x", pady=(0, 10))
 
         # Options row
@@ -62,12 +64,14 @@ class PlymotionApp:
         self._progress = ttk.Progressbar(main, mode="determinate", length=400)
         self._progress.pack(fill="x", pady=(10, 5))
 
-        self._progress_label = ttk.Label(main, text="")
-        self._progress_label.pack(anchor="w")
+        # Log panel: step-by-step feedback (video info, conversion, install)
+        ttk.Label(main, text="Registro:").pack(anchor="w")
+        self._log = LogPanel(main, height=10)
+        self._log.pack(fill="both", expand=True, pady=(2, 10))
 
         # Buttons
         btns = ttk.Frame(main)
-        btns.pack(fill="x", pady=(15, 0))
+        btns.pack(fill="x", pady=(0, 0))
 
         self._convert_btn = ttk.Button(
             btns, text="Convertir", command=self._on_convert
@@ -77,11 +81,30 @@ class PlymotionApp:
         self._install_btn = ttk.Button(
             btns, text="Instalar", command=self._on_install, state="disabled"
         )
-        self._install_btn.pack(side="left")
+        self._install_btn.pack(side="left", padx=(0, 10))
+
+        self._open_dir_btn = ttk.Button(
+            btns, text="Abrir carpeta de salida", command=self._on_open_output_dir,
+            state="disabled",
+        )
+        self._open_dir_btn.pack(side="left")
 
         # Status
         self._status = StatusBar(main)
         self._status.pack(fill="x", side="bottom", pady=(10, 0))
+
+    def _on_video_selected(self, path: str) -> None:
+        from plymotion.video_extractor import get_video_info
+
+        self._log.append(f"Video seleccionado: {path}")
+        try:
+            info = get_video_info(Path(path))
+            self._log.append(
+                f"  Resolución original: {info['width']}x{info['height']}, "
+                f"duración: {info['duration']}s"
+            )
+        except Exception as exc:
+            self._log.append(f"  (No se pudo leer info del video: {exc})")
 
     def _on_convert(self) -> None:
         video = self._file_picker.get()
@@ -96,8 +119,10 @@ class PlymotionApp:
         self._converting = True
         self._convert_btn.configure(state="disabled")
         self._install_btn.configure(state="disabled")
+        self._open_dir_btn.configure(state="disabled")
         self._progress["value"] = 0
         self._status.set("Iniciando conversión...")
+        self._log.append("--- Iniciando conversión ---")
 
         thread = threading.Thread(target=self._run_convert, daemon=True)
         thread.start()
@@ -149,19 +174,22 @@ class PlymotionApp:
 
     def _update_progress(self, value: int, text: str) -> None:
         self._root.after(0, lambda: self._progress.configure(value=value))
-        self._root.after(0, lambda: self._progress_label.configure(text=text))
         self._root.after(0, lambda: self._status.set(text))
+        self._root.after(0, lambda: self._log.append(text))
 
     def _convert_done(self) -> None:
         self._converting = False
         self._convert_btn.configure(state="normal")
         self._install_btn.configure(state="normal")
+        self._open_dir_btn.configure(state="normal")
         self._status.set("Conversión completada")
+        self._log.append("--- Conversión completada ---")
 
     def _convert_error(self, msg: str) -> None:
         self._converting = False
         self._convert_btn.configure(state="normal")
         self._status.set("Error en la conversión")
+        self._log.append(f"ERROR: {msg}")
         messagebox.showerror("Error", msg)
 
     def _on_install(self) -> None:
@@ -178,6 +206,7 @@ class PlymotionApp:
 
         self._install_btn.configure(state="disabled")
         self._status.set("Instalando theme...")
+        self._log.append("--- Instalando theme (requiere sudo) ---")
         thread = threading.Thread(target=self._run_install, daemon=True)
         thread.start()
 
@@ -196,6 +225,7 @@ class PlymotionApp:
     def _install_done(self) -> None:
         self._install_btn.configure(state="normal")
         self._status.set("Theme instalado! Reinicia para verlo.")
+        self._log.append("--- Theme instalado ---")
         messagebox.showinfo(
             "Instalado",
             "Theme instalado correctamente.\nReinicia el sistema para ver el nuevo boot splash.",
@@ -204,7 +234,23 @@ class PlymotionApp:
     def _install_error(self, msg: str) -> None:
         self._install_btn.configure(state="normal")
         self._status.set("Error en la instalación")
+        self._log.append(f"ERROR: {msg}")
         messagebox.showerror("Error de instalación", msg)
+
+    def _on_open_output_dir(self) -> None:
+        if not self._output_dir or not self._output_dir.exists():
+            messagebox.showwarning("Sin output", "Primero convierte un video.")
+            return
+
+        try:
+            if sys.platform == "darwin":
+                subprocess.Popen(["open", str(self._output_dir)])
+            elif sys.platform.startswith("win"):
+                subprocess.Popen(["explorer", str(self._output_dir)])
+            else:
+                subprocess.Popen(["xdg-open", str(self._output_dir)])
+        except Exception as exc:
+            messagebox.showerror("Error", f"No se pudo abrir la carpeta:\n{exc}")
 
     def _on_close(self) -> None:
         if self._converting:
