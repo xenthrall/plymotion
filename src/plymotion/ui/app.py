@@ -18,9 +18,9 @@ async def main(page: ft.Page) -> None:
     page.title = f"Plymotion v{__version__}"
     page.theme_mode = ft.ThemeMode.SYSTEM
     page.window.width = 640
-    page.window.height = 640
+    page.window.height = 700
     page.window.min_width = 560
-    page.window.min_height = 520
+    page.window.min_height = 560
     page.padding = 20
     page.spacing = 14
 
@@ -60,8 +60,12 @@ async def main(page: ft.Page) -> None:
         status_text.value = text
         page.update()
 
+    # FilePicker is a "Service" control: it auto-registers itself against
+    # this page just by being constructed (Service.init() does that). It
+    # must NOT be added to page.overlay — that list is for visual controls,
+    # and the client renderer doesn't know a "FilePicker" widget, which
+    # surfaces as a red "Unknown control: FilePicker" error banner.
     file_picker = ft.FilePicker()
-    page.overlay.append(file_picker)
 
     async def on_pick_video(_e: Any) -> None:
         files = await file_picker.pick_files(
@@ -87,31 +91,39 @@ async def main(page: ft.Page) -> None:
         except Exception as exc:
             log(f"  (No se pudo leer info del video: {exc})")
 
-    convert_btn = ft.FilledButton(
-        "Convertir", icon=ft.Icons.PLAY_ARROW, on_click=lambda _e: start_convert()
-    )
-    install_btn = ft.OutlinedButton(
-        "Instalar", icon=ft.Icons.INSTALL_DESKTOP,
-        on_click=lambda _e: confirm_install(), disabled=True,
-    )
-    open_dir_btn = ft.TextButton(
-        "Abrir carpeta de salida", icon=ft.Icons.FOLDER_OPEN,
-        on_click=lambda _e: open_output_dir(), disabled=True,
-    )
+    # --- Button availability -------------------------------------------------
+    # `available`: business-logic gating (e.g. "Instalar" needs a finished
+    # conversion). `busy`: true while any background/privileged action is
+    # running, and disables every action button regardless of `available`,
+    # so two privileged operations (each its own pkexec prompt) never overlap.
+    available = {
+        "convert": True,
+        "install": False,
+        "open_dir": False,
+        "preview": True,
+        "restore": True,
+        "reset": True,
+    }
+    busy = {"value": False}
 
-    def set_buttons(
-        *,
-        convert: bool | None = None,
-        install: bool | None = None,
-        open_dir: bool | None = None,
-    ) -> None:
-        if convert is not None:
-            convert_btn.disabled = not convert
-        if install is not None:
-            install_btn.disabled = not install
-        if open_dir is not None:
-            open_dir_btn.disabled = not open_dir
+    def apply_button_states() -> None:
+        convert_btn.disabled = not available["convert"] or busy["value"]
+        install_btn.disabled = not available["install"] or busy["value"]
+        open_dir_btn.disabled = not available["open_dir"] or busy["value"]
+        preview_btn.disabled = not available["preview"] or busy["value"]
+        restore_btn.disabled = not available["restore"] or busy["value"]
+        reset_btn.disabled = not available["reset"] or busy["value"]
         page.update()
+
+    def set_available(**kwargs: bool) -> None:
+        available.update(kwargs)
+        apply_button_states()
+
+    def set_busy(value: bool) -> None:
+        busy["value"] = value
+        apply_button_states()
+
+    # --- Convert --------------------------------------------------------------
 
     def start_convert() -> None:
         video = video_path.value
@@ -122,7 +134,7 @@ async def main(page: ft.Page) -> None:
             notify(f"El archivo no existe:\n{video}")
             return
 
-        set_buttons(convert=False, install=False, open_dir=False)
+        set_busy(True)
         progress.value = 0
         set_status("Iniciando conversión...")
         log("--- Iniciando conversión ---")
@@ -178,23 +190,26 @@ async def main(page: ft.Page) -> None:
             )
             update_progress(100, f"Listo! Archivos en: {out_dir}")
 
-            set_buttons(convert=True, install=True, open_dir=True)
             set_status("Conversión completada")
             log("--- Conversión completada ---")
+            set_available(install=True, open_dir=True)
 
         except Exception as exc:
-            set_buttons(convert=True, install=False, open_dir=False)
             set_status("Error en la conversión")
             log(f"ERROR: {exc}")
             notify(str(exc))
+        finally:
+            set_busy(False)
 
-    def confirm_install() -> None:
-        def do_install(_e: Any) -> None:
+    # --- Privileged actions (install / preview / restore / reset) -------------
+    # Each shows a confirmation dialog explaining what will happen and that a
+    # graphical sudo (pkexec) prompt will appear, then runs in a background
+    # thread so the pkexec prompt doesn't block the UI.
+
+    def confirm_action(title: str, message: str, confirm_label: str, on_confirm: Any) -> None:
+        def do_action(_e: Any) -> None:
             page.pop_dialog()
-            set_buttons(install=False)
-            set_status("Instalando theme...")
-            log("--- Instalando theme (requiere sudo) ---")
-            page.run_thread(run_install)
+            on_confirm()
 
         def cancel(_e: Any) -> None:
             page.pop_dialog()
@@ -203,18 +218,27 @@ async def main(page: ft.Page) -> None:
             "list[ft.Control]",
             [
                 ft.TextButton("Cancelar", on_click=cancel),
-                ft.FilledButton("Continuar", on_click=do_install),
+                ft.FilledButton(confirm_label, on_click=do_action),
             ],
         )
         page.show_dialog(
-            ft.AlertDialog(
-                title=ft.Text("Confirmar instalación"),
-                content=ft.Text(
-                    "Se hará backup del tema actual y se instalará el nuevo.\n"
-                    "El sistema pedirá contraseña de sudo.\n\n¿Continuar?"
-                ),
-                actions=actions,
-            )
+            ft.AlertDialog(title=ft.Text(title), content=ft.Text(message), actions=actions)
+        )
+
+    def start_install() -> None:
+        set_busy(True)
+        set_status("Instalando theme...")
+        log("--- Instalando theme (pkexec) ---")
+        page.run_thread(run_install)
+
+    def confirm_install() -> None:
+        confirm_action(
+            "Confirmar instalación",
+            "Se hará backup del tema actual con este nombre y se instalará el "
+            "nuevo.\nEl sistema pedirá contraseña de administrador (pkexec).\n\n"
+            "¿Continuar?",
+            "Instalar",
+            start_install,
         )
 
     def run_install() -> None:
@@ -223,17 +247,120 @@ async def main(page: ft.Page) -> None:
         try:
             name = theme_name.value or "plymotion"
             src = output_dir["value"]
-            if src is not None:
-                install_theme(src, theme_name=name)
-            set_status("Theme instalado! Reinicia para verlo.")
+            if src is None:
+                notify("Primero convierte un video.")
+                return
+            install_theme(src, theme_name=name)
+            set_status("Theme instalado! Puedes probarlo abajo o reiniciar.")
             log("--- Theme instalado ---")
-            set_buttons(install=True)
-            notify("Theme instalado correctamente. Reinicia para verlo.")
+            notify("Theme instalado correctamente.")
         except Exception as exc:
             set_status("Error en la instalación")
             log(f"ERROR: {exc}")
-            set_buttons(install=True)
             notify(str(exc))
+        finally:
+            set_busy(False)
+
+    def start_preview() -> None:
+        set_busy(True)
+        set_status("Mostrando splash instalado...")
+        log("--- Probando theme instalado (pkexec) ---")
+        page.run_thread(run_preview)
+
+    def confirm_preview() -> None:
+        confirm_action(
+            "Probar boot splash",
+            "Se mostrará el splash del theme instalado actualmente durante "
+            "unos segundos, sobre tu sesión en curso (la pantalla puede "
+            "parpadear brevemente).\nEl sistema pedirá contraseña de "
+            "administrador (pkexec).\n\n¿Continuar?",
+            "Probar",
+            start_preview,
+        )
+
+    def run_preview() -> None:
+        from plymotion.installer import preview_installed_theme
+
+        try:
+            preview_installed_theme(seconds=6)
+            set_status("Prueba finalizada")
+            log("--- Prueba finalizada ---")
+        except Exception as exc:
+            set_status("Error al probar el theme")
+            log(f"ERROR: {exc}")
+            notify(str(exc))
+        finally:
+            set_busy(False)
+
+    def start_restore() -> None:
+        set_busy(True)
+        set_status("Restaurando backup...")
+        log("--- Restaurando backup (pkexec) ---")
+        page.run_thread(run_restore)
+
+    def confirm_restore() -> None:
+        confirm_action(
+            "Restaurar backup",
+            "Se restaurará la copia de seguridad del theme "
+            f"'{theme_name.value or 'plymotion'}' (si existe) y se "
+            "regenerará el initramfs.\nEl sistema pedirá contraseña de "
+            "administrador (pkexec).\n\n¿Continuar?",
+            "Restaurar",
+            start_restore,
+        )
+
+    def run_restore() -> None:
+        from plymotion.installer import restore_backup
+
+        try:
+            name = theme_name.value or "plymotion"
+            restored = restore_backup(name)
+            if restored:
+                set_status("Backup restaurado")
+                log("--- Backup restaurado ---")
+                notify("Backup restaurado correctamente.")
+            else:
+                set_status("No había backup que restaurar")
+                log(f"No hay backup guardado para '{name}'.")
+                notify(f"No hay backup guardado para '{name}'.")
+        except Exception as exc:
+            set_status("Error al restaurar")
+            log(f"ERROR: {exc}")
+            notify(str(exc))
+        finally:
+            set_busy(False)
+
+    def start_reset() -> None:
+        set_busy(True)
+        set_status("Volviendo a modo texto...")
+        log("--- Reseteando a modo texto (pkexec) ---")
+        page.run_thread(run_reset)
+
+    def confirm_reset() -> None:
+        confirm_action(
+            "Volver a modo texto",
+            "Esto pone el theme de arranque en modo texto plano (el "
+            "fallback más seguro de Plymouth) y regenera el initramfs.\n"
+            "El sistema pedirá contraseña de administrador (pkexec).\n\n"
+            "¿Continuar?",
+            "Volver a texto",
+            start_reset,
+        )
+
+    def run_reset() -> None:
+        from plymotion.installer import reset_to_default
+
+        try:
+            reset_to_default()
+            set_status("De vuelta en modo texto")
+            log("--- Modo texto restaurado ---")
+            notify("Boot splash en modo texto.")
+        except Exception as exc:
+            set_status("Error al resetear")
+            log(f"ERROR: {exc}")
+            notify(str(exc))
+        finally:
+            set_busy(False)
 
     def open_output_dir() -> None:
         src = output_dir["value"]
@@ -250,6 +377,31 @@ async def main(page: ft.Page) -> None:
         except Exception as exc:
             notify(f"No se pudo abrir la carpeta:\n{exc}")
 
+    convert_btn = ft.FilledButton(
+        "Convertir", icon=ft.Icons.PLAY_ARROW, on_click=lambda _e: start_convert()
+    )
+    install_btn = ft.OutlinedButton(
+        "Instalar", icon=ft.Icons.INSTALL_DESKTOP, on_click=lambda _e: confirm_install()
+    )
+    open_dir_btn = ft.TextButton(
+        "Abrir carpeta de salida", icon=ft.Icons.FOLDER_OPEN,
+        on_click=lambda _e: open_output_dir(),
+    )
+    preview_btn = ft.OutlinedButton(
+        "Probar theme instalado", icon=ft.Icons.PLAY_CIRCLE_OUTLINE,
+        on_click=lambda _e: confirm_preview(),
+    )
+    restore_btn = ft.OutlinedButton(
+        "Restaurar backup", icon=ft.Icons.SETTINGS_BACKUP_RESTORE,
+        on_click=lambda _e: confirm_restore(),
+    )
+    reset_btn = ft.TextButton(
+        "Volver a modo texto", icon=ft.Icons.WARNING_AMBER,
+        on_click=lambda _e: confirm_reset(),
+    )
+
+    apply_button_states()
+
     video_row = cast(
         "list[ft.Control]",
         [
@@ -258,7 +410,8 @@ async def main(page: ft.Page) -> None:
         ],
     )
     options_row = cast("list[ft.Control]", [resolution, fps, theme_name])
-    buttons_row = cast("list[ft.Control]", [convert_btn, install_btn, open_dir_btn])
+    convert_row = cast("list[ft.Control]", [convert_btn, install_btn, open_dir_btn])
+    system_row = cast("list[ft.Control]", [preview_btn, restore_btn, reset_btn])
 
     page.add(
         ft.Text("Plymotion - Video to Boot Splash", size=22, weight=ft.FontWeight.BOLD),
@@ -267,7 +420,10 @@ async def main(page: ft.Page) -> None:
         progress,
         ft.Text("Registro:", weight=ft.FontWeight.W_500),
         log_container,
-        ft.Row(buttons_row),
+        ft.Row(convert_row),
+        ft.Divider(),
+        ft.Text("Sistema (requiere administrador):", weight=ft.FontWeight.W_500),
+        ft.Row(system_row, wrap=True),
         status_text,
     )
 
