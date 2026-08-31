@@ -55,10 +55,15 @@ def convert(
         "plymotion", "--theme-name", "-t",
         help="Name for the generated Plymouth theme.",
     ),
-    image_dir: str = typer.Option(
-        "/usr/share/plymouth/themes/plymotion",
+    image_dir: str | None = typer.Option(
+        None,
         "--image-dir",
-        help="ImageDir path written into generated theme files.",
+        help="ImageDir path written into generated theme files "
+             "(default: /usr/share/plymouth/themes/<theme-name>).",
+    ),
+    install: bool = typer.Option(
+        False, "--install",
+        help="Install the generated theme system-wide after conversion (requires sudo).",
     ),
 ) -> None:
     """Convert a video to a Plymouth boot splash theme."""
@@ -74,6 +79,8 @@ def convert(
         typer.echo(f"Invalid resolution: {resolution}. Use WxH format.", err=True)
         raise typer.Exit(1)
 
+    resolved_image_dir = image_dir or f"/usr/share/plymouth/themes/{theme_name}"
+
     # Info
     typer.echo(f"Plymotion v{__version__}")
     typer.echo(f"Input:  {video_input}")
@@ -81,15 +88,15 @@ def convert(
     typer.echo(f"Resolution: {target_w}x{target_h} @ {fps} fps")
     typer.echo()
 
-    # Step 1: Extract frames
-    frames_dir = output_dir / "frames"
+    # Step 1: Extract frames directly into the theme dir (flat layout:
+    # frames sit next to the .script/.plymouth files, matching ImageDir).
     typer.echo("Extracting frames with ffmpeg...")
-    frame_count = extract_frames(video_input, frames_dir, fps=fps)
+    frame_count = extract_frames(video_input, output_dir, fps=fps)
     typer.echo(f"  Extracted {frame_count} frames.")
 
     # Step 2: Optimize frames
     typer.echo("Optimizing frames...")
-    optimize_frames(frames_dir, (target_w, target_h))
+    optimize_frames(output_dir, (target_w, target_h))
     typer.echo(f"  Optimized {frame_count} frames to {target_w}x{target_h}.")
 
     # Step 3: Generate theme files
@@ -97,18 +104,32 @@ def convert(
     script_path = output_dir / f"{theme_name}-plymouth.script"
     plymouth_path = output_dir / f"{theme_name}-plymouth.plymouth"
 
-    generate_script(script_path, frame_count, image_dir)
-    generate_plymouth(plymouth_path, theme_name, image_dir,
-                      f"{image_dir}/{theme_name}-plymouth.script")
+    generate_script(script_path, frame_count, resolved_image_dir)
+    generate_plymouth(plymouth_path, theme_name, resolved_image_dir,
+                      f"{resolved_image_dir}/{theme_name}-plymouth.script")
     typer.echo(f"  {script_path.name}")
     typer.echo(f"  {plymouth_path.name}")
 
-    # Step 4: Installation hint
-    typer.echo()
-    typer.echo("To install:")
-    typer.echo(f"  sudo cp -r {output_dir}/frames /usr/share/plymouth/themes/plymotion/")
-    typer.echo(f"  sudo cp {output_dir}/*.plymouth /usr/share/plymouth/themes/plymotion/")
-    typer.echo(f"  sudo cp {output_dir}/*.script /usr/share/plymouth/themes/plymotion/")
+    # Step 4: Install (optional) or print manual steps
+    if install:
+        from plymotion.installer import install_theme
+
+        typer.echo()
+        typer.echo("Installing theme (requires sudo)...")
+        install_theme(output_dir, theme_name=theme_name)
+        typer.echo("Installed! Reboot to see the new boot splash.")
+    else:
+        typer.echo()
+        typer.echo("To install now, re-run with --install, or do it manually:")
+        typer.echo(f"  sudo mkdir -p /usr/share/plymouth/themes/{theme_name}")
+        typer.echo(f"  sudo cp {output_dir}/* /usr/share/plymouth/themes/{theme_name}/")
+        typer.echo(
+            f"  sudo update-alternatives --install "
+            f"/usr/share/plymouth/themes/default.plymouth default.plymouth "
+            f"/usr/share/plymouth/themes/{theme_name}/{theme_name}-plymouth.plymouth 120"
+        )
+        typer.echo("  sudo update-initramfs -u")
+
     typer.echo()
     typer.echo("Done!")
 

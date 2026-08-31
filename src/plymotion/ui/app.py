@@ -116,16 +116,18 @@ class PlymotionApp:
             name = self._theme_name.get() or "plymotion"
 
             self._output_dir = video.parent / f"plymotion-{name}"
-            frames_dir = self._output_dir / "frames"
 
+            # Frames are extracted directly into the theme dir (flat
+            # layout), next to the .script/.plymouth files, so ImageDir
+            # can point straight at the installed theme directory.
             # Step 1: Extract
             self._update_progress(0, "Extrayendo frames...")
-            frame_count = extract_frames(video, frames_dir, fps=fps)
+            frame_count = extract_frames(video, self._output_dir, fps=fps)
             self._update_progress(33, f"Extraídos {frame_count} frames")
 
             # Step 2: Optimize
             self._update_progress(40, "Optimizando frames...")
-            optimize_frames(frames_dir, (target_w, target_h))
+            optimize_frames(self._output_dir, (target_w, target_h))
             self._update_progress(70, f"Optimizados a {target_w}x{target_h}")
 
             # Step 3: Generate theme files
