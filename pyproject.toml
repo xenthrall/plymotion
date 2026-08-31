@@ -8,6 +8,7 @@ license = {text = "MIT"}
 dependencies = [
     "typer>=0.9.0",
     "Pillow>=10.0.0",
+    "flet>=0.86.5",
 ]
 
 [project.optional-dependencies]
