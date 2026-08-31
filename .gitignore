@@ -1,2 +1,15 @@
 *.pyc
 __pycache__/
+/.mimocode
+
+# Python tooling
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Plymotion generated output
+/plymotion-output/
+plymotion-*/
