@@ -40,7 +40,7 @@ Se abre una ventana donde puedes:
 ### Línea de comandos
 
 ```bash
-# Convertir video a theme
+# Convertir video a theme (deja los archivos listos en ./plymotion-output)
 plymotion convert --video-input mi_video.mp4
 
 # Con opciones personalizadas
@@ -50,6 +50,9 @@ plymotion convert \
   --resolution 1920x1080 \
   --fps 24 \
   --theme-name mi-theme
+
+# Convertir E instalar de una vez (pide sudo)
+plymotion convert --video-input mi_video.mp4 --install
 ```
 
 ### Opciones CLI
@@ -61,6 +64,36 @@ plymotion convert \
 | `--resolution, -r` | Resolución destino (WxH) | `1920x1080` |
 | `--fps, -f` | Frames por segundo | `30` |
 | `--theme-name, -t` | Nombre del tema | `plymotion` |
+| `--image-dir` | Ruta ImageDir escrita en el theme | `/usr/share/plymouth/themes/<theme-name>` |
+| `--install` | Instala el theme generado (usa `installer.py`, pide sudo) | `false` |
+
+Sin `--install`, `convert` imprime al final el comando manual de instalación
+equivalente (copiar archivos + `update-alternatives` + `update-initramfs`).
+
+## Probar la conversión rápidamente
+
+No hace falta instalar el theme para ver si la animación "funciona": basta con
+generar los frames y abrir la carpeta de salida.
+
+```bash
+# 1. Instalar dependencias (una sola vez)
+uv sync --all-extras
+
+# 2. Lanzar la GUI
+uv run plymotion gui
+# Examinar → elegir tu video → Convertir
+# El panel "Registro" muestra cada paso; al terminar se habilita
+# "Abrir carpeta de salida" para revisar los frames generados.
+
+# — o por CLI, sin GUI —
+uv run plymotion convert -i mi_video.mp4 -o ./salida
+xdg-open ./salida   # revisa los PNG generados (frame1.png, frame2.png, ...)
+```
+
+Si los PNG se ven bien (nítidos, en el orden correcto), la animación
+funcionará igual en Plymouth: el `.script` generado simplemente los muestra
+en loop. Solo cuando quieras verlo en el arranque real necesitas instalar
+(`--install` en el CLI, o el botón "Instalar" en la GUI, ambos piden sudo).
 
 ## Seguridad Plymouth
 
