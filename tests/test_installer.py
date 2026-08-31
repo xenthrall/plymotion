@@ -11,6 +11,7 @@ import pytest
 import plymotion.installer as installer
 from plymotion.installer import (
     install_theme,
+    list_installed_themes,
     preview_installed_theme,
     reset_to_default,
     restore_backup,
@@ -200,6 +201,57 @@ def test_reset_to_default_runs_privileged_script(monkeypatch: pytest.MonkeyPatch
     assert "update-alternatives --set default.plymouth" in script
     assert str(installer.TEXT_THEME_PLYMOUTH) in script
     assert "update-initramfs -u" in script
+
+
+def test_list_installed_themes_empty_when_dir_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A missing THEMES_DIR yields an empty list instead of raising."""
+    monkeypatch.setattr(installer, "THEMES_DIR", tmp_path / "does-not-exist")
+    assert list_installed_themes() == []
+
+
+def test_list_installed_themes_marks_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Themes are listed with parsed name/description, and the default is flagged."""
+    themes_dir = tmp_path / "themes"
+    themes_dir.mkdir()
+
+    spinner_dir = themes_dir / "spinner"
+    spinner_dir.mkdir()
+    (spinner_dir / "spinner.plymouth").write_text(
+        "[Plymouth Theme]\nName=Spinner\nDescription=A spinner theme\nModuleName=script\n"
+    )
+
+    mine_dir = themes_dir / "mytheme"
+    mine_dir.mkdir()
+    (mine_dir / "mytheme.plymouth").write_text(
+        "[Plymouth Theme]\nName=My Theme\nDescription=Custom\nModuleName=script\n"
+    )
+
+    (themes_dir / "default.plymouth").symlink_to(mine_dir / "mytheme.plymouth")
+
+    monkeypatch.setattr(installer, "THEMES_DIR", themes_dir)
+    themes = {t.name: t for t in list_installed_themes()}
+
+    assert set(themes) == {"Spinner", "My Theme"}
+    assert themes["My Theme"].is_default is True
+    assert themes["Spinner"].is_default is False
+    assert themes["Spinner"].description == "A spinner theme"
+
+
+def test_list_installed_themes_skips_unparseable_plymouth_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A corrupt/missing-section .plymouth file is skipped, not fatal."""
+    themes_dir = tmp_path / "themes"
+    broken_dir = themes_dir / "broken"
+    broken_dir.mkdir(parents=True)
+    (broken_dir / "broken.plymouth").write_text("not an ini section at all")
+
+    monkeypatch.setattr(installer, "THEMES_DIR", themes_dir)
+    assert list_installed_themes() == []
 
 
 def test_preview_installed_theme_runs_privileged_script(monkeypatch: pytest.MonkeyPatch) -> None:

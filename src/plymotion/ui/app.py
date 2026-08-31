@@ -26,7 +26,7 @@ async def main(page: ft.Page) -> None:
 
     output_dir: dict[str, Path | None] = {"value": None}
 
-    video_path = ft.TextField(label="Video", read_only=True, expand=True)
+    video_path = ft.TextField(label="Video o GIF", read_only=True, expand=True)
     theme_name = ft.TextField(label="Nombre del theme", value="plymotion", width=180)
     resolution = ft.Dropdown(
         label="Resolución", value="1920x1080",
@@ -35,6 +35,10 @@ async def main(page: ft.Page) -> None:
     fps = ft.Dropdown(
         label="FPS", value="30",
         options=dropdown_options(FPS_OPTIONS), width=100,
+    )
+    trim_start_field = ft.TextField(label="Inicio (s)", value="0", width=100)
+    trim_duration_field = ft.TextField(
+        label="Duración (s, vacío = hasta el final)", width=220,
     )
 
     progress = ft.ProgressBar(value=0)
@@ -69,8 +73,9 @@ async def main(page: ft.Page) -> None:
 
     async def on_pick_video(_e: Any) -> None:
         files = await file_picker.pick_files(
-            dialog_title="Selecciona un video",
-            file_type=ft.FilePickerFileType.VIDEO,
+            dialog_title="Selecciona un video o GIF",
+            file_type=ft.FilePickerFileType.CUSTOM,
+            allowed_extensions=["mp4", "mkv", "webm", "avi", "mov", "m4v", "gif"],
         )
         if not files or not files[0].path:
             return
@@ -90,6 +95,11 @@ async def main(page: ft.Page) -> None:
             )
         except Exception as exc:
             log(f"  (No se pudo leer info del video: {exc})")
+        log(
+            "  Sugerencia: el arranque/apagado real suele durar solo unos "
+            "segundos, así que recortar a un clip corto (Inicio/Duración "
+            "abajo) suele ser mejor que convertir el archivo completo."
+        )
 
     # --- Button availability -------------------------------------------------
     # `available`: business-logic gating (e.g. "Instalar" needs a finished
@@ -134,6 +144,19 @@ async def main(page: ft.Page) -> None:
             notify(f"El archivo no existe:\n{video}")
             return
 
+        try:
+            trim_start_val = float(trim_start_field.value or "0")
+        except ValueError:
+            notify("Inicio de recorte inválido: debe ser un número de segundos.")
+            return
+        trim_duration_val: float | None = None
+        if trim_duration_field.value:
+            try:
+                trim_duration_val = float(trim_duration_field.value)
+            except ValueError:
+                notify("Duración de recorte inválida: debe ser un número de segundos.")
+                return
+
         set_busy(True)
         progress.value = 0
         set_status("Iniciando conversión...")
@@ -147,6 +170,8 @@ async def main(page: ft.Page) -> None:
             resolution.value or "1920x1080",
             fps.value or "30",
             theme_name.value or "plymotion",
+            trim_start_val,
+            trim_duration_val,
         )
 
     def update_progress(value: int, text: str) -> None:
@@ -154,9 +179,20 @@ async def main(page: ft.Page) -> None:
         set_status(text)
         log(text)
 
-    def run_convert(video_str: str, resolution_str: str, fps_str: str, name: str) -> None:
+    def run_convert(
+        video_str: str,
+        resolution_str: str,
+        fps_str: str,
+        name: str,
+        trim_start_val: float,
+        trim_duration_val: float | None,
+    ) -> None:
         from plymotion.frame_processor import optimize_frames
-        from plymotion.template_generator import generate_plymouth, generate_script
+        from plymotion.template_generator import (
+            estimate_loop_seconds,
+            generate_plymouth,
+            generate_script,
+        )
         from plymotion.video_extractor import extract_frames
 
         try:
@@ -172,7 +208,10 @@ async def main(page: ft.Page) -> None:
             # layout), next to the .script/.plymouth files, so ImageDir
             # can point straight at the installed theme directory.
             update_progress(0, "Extrayendo frames...")
-            frame_count = extract_frames(video, out_dir, fps=fps_val)
+            frame_count = extract_frames(
+                video, out_dir, fps=fps_val,
+                start_time=trim_start_val, duration=trim_duration_val,
+            )
             update_progress(33, f"Extraídos {frame_count} frames")
 
             update_progress(40, "Optimizando frames...")
@@ -188,7 +227,12 @@ async def main(page: ft.Page) -> None:
             generate_plymouth(
                 plymouth_path, name, image_dir, f"{image_dir}/{name}-plymouth.script"
             )
-            update_progress(100, f"Listo! Archivos en: {out_dir}")
+            loop_seconds = estimate_loop_seconds(frame_count)
+            update_progress(
+                100,
+                f"Listo! {frame_count} frames ≈ {loop_seconds:.1f}s de reproducción "
+                f"en loop (Plymouth refresca a ~50Hz, tasa fija). Archivos en: {out_dir}",
+            )
 
             set_status("Conversión completada")
             log("--- Conversión completada ---")
@@ -254,6 +298,7 @@ async def main(page: ft.Page) -> None:
             set_status("Theme instalado! Puedes probarlo abajo o reiniciar.")
             log("--- Theme instalado ---")
             notify("Theme instalado correctamente.")
+            refresh_installed_themes()
         except Exception as exc:
             set_status("Error en la instalación")
             log(f"ERROR: {exc}")
@@ -319,6 +364,7 @@ async def main(page: ft.Page) -> None:
                 set_status("Backup restaurado")
                 log("--- Backup restaurado ---")
                 notify("Backup restaurado correctamente.")
+                refresh_installed_themes()
             else:
                 set_status("No había backup que restaurar")
                 log(f"No hay backup guardado para '{name}'.")
@@ -355,12 +401,51 @@ async def main(page: ft.Page) -> None:
             set_status("De vuelta en modo texto")
             log("--- Modo texto restaurado ---")
             notify("Boot splash en modo texto.")
+            refresh_installed_themes()
         except Exception as exc:
             set_status("Error al resetear")
             log(f"ERROR: {exc}")
             notify(str(exc))
         finally:
             set_busy(False)
+
+    # --- Installed themes ------------------------------------------------------
+
+    installed_themes_view = ft.ListView(spacing=6, height=140)
+
+    def refresh_installed_themes() -> None:
+        from plymotion.installer import list_installed_themes
+
+        installed_themes_view.controls.clear()
+        try:
+            themes = list_installed_themes()
+        except Exception as exc:
+            installed_themes_view.controls.append(
+                ft.Text(f"No se pudo leer la lista de temas: {exc}", size=12)
+            )
+            page.update()
+            return
+
+        if not themes:
+            installed_themes_view.controls.append(
+                ft.Text("No se encontraron temas instalados.", italic=True, size=12)
+            )
+        for theme in themes:
+            label = f"{'★ ' if theme.is_default else ''}{theme.name}"
+            installed_themes_view.controls.append(
+                ft.Column(
+                    [
+                        ft.Text(
+                            label,
+                            size=13,
+                            weight=ft.FontWeight.BOLD if theme.is_default else None,
+                        ),
+                        ft.Text(theme.description or theme.directory.name, size=11, italic=True),
+                    ],
+                    spacing=0,
+                )
+            )
+        page.update()
 
     def open_output_dir() -> None:
         src = output_dir["value"]
@@ -401,6 +486,7 @@ async def main(page: ft.Page) -> None:
     )
 
     apply_button_states()
+    refresh_installed_themes()
 
     video_row = cast(
         "list[ft.Control]",
@@ -409,7 +495,10 @@ async def main(page: ft.Page) -> None:
             ft.FilledButton("Examinar", icon=ft.Icons.VIDEO_FILE, on_click=on_pick_video),
         ],
     )
-    options_row = cast("list[ft.Control]", [resolution, fps, theme_name])
+    options_row = cast(
+        "list[ft.Control]",
+        [resolution, fps, theme_name, trim_start_field, trim_duration_field],
+    )
     convert_row = cast("list[ft.Control]", [convert_btn, install_btn, open_dir_btn])
     system_row = cast("list[ft.Control]", [preview_btn, restore_btn, reset_btn])
 
@@ -424,6 +513,26 @@ async def main(page: ft.Page) -> None:
         ft.Divider(),
         ft.Text("Sistema (requiere administrador):", weight=ft.FontWeight.W_500),
         ft.Row(system_row, wrap=True),
+        ft.Divider(),
+        ft.Row(
+            cast(
+                "list[ft.Control]",
+                [
+                    ft.Text("Temas instalados en el sistema:", weight=ft.FontWeight.W_500),
+                    ft.IconButton(
+                        icon=ft.Icons.REFRESH,
+                        tooltip="Actualizar lista",
+                        on_click=lambda _e: refresh_installed_themes(),
+                    ),
+                ],
+            )
+        ),
+        ft.Container(
+            content=installed_themes_view,
+            border=ft.Border.all(width=1, color=ft.Colors.OUTLINE),
+            border_radius=8,
+            padding=10,
+        ),
         status_text,
     )
 

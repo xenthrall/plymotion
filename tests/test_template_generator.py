@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from plymotion.template_generator import generate_plymouth, generate_script
+import pytest
+
+from plymotion.template_generator import estimate_loop_seconds, generate_plymouth, generate_script
 
 
 def test_generate_script(tmp_path: Path) -> None:
@@ -43,3 +45,20 @@ def test_generate_script_single_frame(tmp_path: Path) -> None:
     content = output.read_text()
     assert "i < 1" in content
     assert "count >= 1" in content
+
+
+def test_estimate_loop_seconds_default_refresh_rate() -> None:
+    """Playback time is frame_count / 50Hz, not tied to extraction fps."""
+    assert estimate_loop_seconds(150) == 3.0
+    assert estimate_loop_seconds(50) == 1.0
+
+
+def test_estimate_loop_seconds_custom_refresh_rate() -> None:
+    """A custom refresh_rate is honored."""
+    assert estimate_loop_seconds(100, refresh_rate=25) == 4.0
+
+
+def test_estimate_loop_seconds_rejects_non_positive_rate() -> None:
+    """A zero or negative refresh rate is invalid."""
+    with pytest.raises(ValueError):
+        estimate_loop_seconds(100, refresh_rate=0)

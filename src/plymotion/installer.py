@@ -8,8 +8,10 @@ per action instead of requiring the whole app to run as root.
 
 from __future__ import annotations
 
+import configparser
 import shlex
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 THEMES_DIR = Path("/usr/share/plymouth/themes")
@@ -31,6 +33,57 @@ def _run_privileged(script: str) -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"Command failed (exit {result.returncode})")
+
+
+@dataclass(frozen=True)
+class InstalledTheme:
+    name: str
+    description: str
+    directory: Path
+    plymouth_path: Path
+    is_default: bool
+
+
+def _current_default_theme_dir_name() -> str | None:
+    """Best-effort resolution of which installed theme is the system default.
+
+    Reliable when the theme was set via update-alternatives (Debian/Ubuntu),
+    which is what install_theme()/reset_to_default() use. On distros that
+    don't manage the default.plymouth symlink this way, this may not
+    resolve, and every theme will show as non-default.
+    """
+    default_link = THEMES_DIR / "default.plymouth"
+    try:
+        return default_link.resolve(strict=True).parent.name
+    except OSError:
+        return None
+
+
+def list_installed_themes() -> list[InstalledTheme]:
+    """List Plymouth themes installed under THEMES_DIR. Read-only, no pkexec."""
+    if not THEMES_DIR.is_dir():
+        return []
+
+    default_dir_name = _current_default_theme_dir_name()
+    themes = []
+    for plymouth_file in sorted(THEMES_DIR.glob("*/*.plymouth")):
+        parser = configparser.ConfigParser()
+        try:
+            parser.read(plymouth_file)
+            section = parser["Plymouth Theme"]
+        except (configparser.Error, KeyError):
+            continue
+
+        themes.append(
+            InstalledTheme(
+                name=section.get("Name", plymouth_file.parent.name),
+                description=section.get("Description", ""),
+                directory=plymouth_file.parent,
+                plymouth_path=plymouth_file,
+                is_default=plymouth_file.parent.name == default_dir_name,
+            )
+        )
+    return themes
 
 
 def validate_theme(theme_dir: Path) -> list[str]:

@@ -5,6 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from string import Template
 
+# Plymouth's `script` module calls the refresh callback at a fixed rate
+# (Plymouth.SetRefreshRate), 50 Hz by default, independent of the fps used
+# to extract frames from the source video. Our generated script advances
+# exactly one frame per callback, so on-screen playback speed is
+# frame_count / PLYMOUTH_DEFAULT_REFRESH_RATE, not the extraction fps.
+PLYMOUTH_DEFAULT_REFRESH_RATE = 50
+
 SCRIPT_TEMPLATE = Template("""\
 for(i = 0; i < $frame_count; i++)
   video_image_arr[i] = Image("$image_dir/frame" + (i + 1) + ".png");
@@ -50,6 +57,19 @@ def generate_script(output_path: Path, frame_count: int, image_dir: str) -> None
         image_dir=image_dir,
     )
     output_path.write_text(content)
+
+
+def estimate_loop_seconds(
+    frame_count: int, refresh_rate: int = PLYMOUTH_DEFAULT_REFRESH_RATE
+) -> float:
+    """Seconds a single loop of the generated animation takes on-screen.
+
+    Not tied to the extraction fps or the source video's duration: Plymouth
+    replays frames at its own fixed refresh rate.
+    """
+    if refresh_rate <= 0:
+        raise ValueError("refresh_rate must be positive")
+    return frame_count / refresh_rate
 
 
 def generate_plymouth(

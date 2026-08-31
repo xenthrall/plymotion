@@ -37,7 +37,7 @@ def convert(
         ..., "--video-input", "-i",
         exists=True,
         readable=True,
-        help="Path to input video file (mp4, webm, avi).",
+        help="Path to input video or animated GIF file (mp4, webm, avi, mkv, mov, gif).",
     ),
     output_dir: Path = typer.Option(
         Path("./plymotion-output"), "--output-dir", "-o",
@@ -50,6 +50,14 @@ def convert(
     fps: int = typer.Option(
         30, "--fps", "-f",
         help="Frames per second to extract.",
+    ),
+    trim_start: float = typer.Option(
+        0.0, "--trim-start", "-s",
+        help="Start offset in seconds; the source before this point is skipped.",
+    ),
+    trim_duration: float | None = typer.Option(
+        None, "--trim-duration", "-d",
+        help="Length in seconds to extract from --trim-start (default: to the end).",
     ),
     theme_name: str = typer.Option(
         "plymotion", "--theme-name", "-t",
@@ -68,7 +76,11 @@ def convert(
 ) -> None:
     """Convert a video to a Plymouth boot splash theme."""
     from plymotion.frame_processor import optimize_frames
-    from plymotion.template_generator import generate_plymouth, generate_script
+    from plymotion.template_generator import (
+        estimate_loop_seconds,
+        generate_plymouth,
+        generate_script,
+    )
     from plymotion.video_extractor import extract_frames
 
     # Parse resolution
@@ -91,8 +103,15 @@ def convert(
     # Step 1: Extract frames directly into the theme dir (flat layout:
     # frames sit next to the .script/.plymouth files, matching ImageDir).
     typer.echo("Extracting frames with ffmpeg...")
-    frame_count = extract_frames(video_input, output_dir, fps=fps)
+    frame_count = extract_frames(
+        video_input, output_dir, fps=fps, start_time=trim_start, duration=trim_duration
+    )
     typer.echo(f"  Extracted {frame_count} frames.")
+    loop_seconds = estimate_loop_seconds(frame_count)
+    typer.echo(
+        f"  Loop duration on screen: ~{loop_seconds:.1f}s "
+        "(Plymouth refreshes at a fixed ~50Hz, independent of --fps)."
+    )
 
     # Step 2: Optimize frames
     typer.echo("Optimizing frames...")

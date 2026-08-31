@@ -15,8 +15,17 @@ def extract_frames(
     video_path: Path,
     output_dir: Path,
     fps: int = 30,
+    start_time: float = 0.0,
+    duration: float | None = None,
 ) -> int:
-    """Extract frames from video as PNG files. Returns frame count."""
+    """Extract frames from a video or animated GIF as PNG files.
+
+    `start_time`/`duration` trim the source before extraction (in seconds).
+    ffmpeg decodes GIF the same way as any other video container, so no
+    format-specific handling is needed here.
+
+    Returns frame count.
+    """
     if not ffmpeg_available():
         raise FileNotFoundError(
             "ffmpeg not found. Install it: sudo apt install ffmpeg"
@@ -24,9 +33,15 @@ def extract_frames(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    cmd = [
-        "ffmpeg",
-        "-i", str(video_path),
+    cmd = ["ffmpeg"]
+    if start_time > 0:
+        # Input seeking (-ss before -i): fast, keyframe-based, plenty
+        # accurate for trimming a boot splash clip.
+        cmd += ["-ss", str(start_time)]
+    cmd += ["-i", str(video_path)]
+    if duration is not None:
+        cmd += ["-t", str(duration)]
+    cmd += [
         "-vf", f"fps={fps}",
         "-pix_fmt", "rgb24",
         str(output_dir / "frame%d.png"),
