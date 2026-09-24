@@ -16,6 +16,7 @@ from plymotion.core.template_generator import (
     generate_script,
 )
 from plymotion.core.video_extractor import extract_frames
+from plymotion.services import boot_logo
 from plymotion.services.progress import NullReporter, Reporter
 
 VIDEO_EXTENSIONS = ["mp4", "mkv", "webm", "avi", "mov", "m4v", "gif"]
@@ -31,6 +32,7 @@ class ConvertOptions:
     colors: int = DEFAULT_COLORS
     trim_start: float = 0.0
     trim_duration: float | None = None
+    boot_logo: bool = False
 
     def validate(self) -> None:
         if not self.video.is_file():
@@ -122,8 +124,18 @@ def convert_video(opts: ConvertOptions, reporter: Reporter | None = None) -> lib
         # the theme play fine on preview/shutdown (live filesystem) but
         # fall back to a text-mode error at real boot. See
         # installer.validate_theme().
+        watermark = False
+        if opts.boot_logo:
+            source = boot_logo.login_logo_source()
+            if source is None:
+                rep.log("No hay logo de login: el tema se genera sin logo de arranque")
+            else:
+                width, height = boot_logo.write_watermark(out_dir, source)
+                watermark = True
+                rep.log(f"Logo del login añadido al arranque ({width}x{height})")
+
         image_dir = f"/usr/share/plymouth/themes/{slug}"
-        generate_script(out_dir / f"{slug}.script", frame_count)
+        generate_script(out_dir / f"{slug}.script", frame_count, watermark=watermark)
         generate_plymouth(
             out_dir / f"{slug}.plymouth", opts.name, image_dir, f"{image_dir}/{slug}.script"
         )
@@ -140,6 +152,7 @@ def convert_video(opts: ConvertOptions, reporter: Reporter | None = None) -> lib
             source_video=str(opts.video),
             trim_start=opts.trim_start,
             trim_duration=opts.trim_duration,
+            boot_logo=watermark,
             created_at=datetime.now(timezone.utc).isoformat(),
         )
         rep.log(f"Tema '{opts.name}' guardado en la galería ({loop_seconds:.1f} s por loop)")

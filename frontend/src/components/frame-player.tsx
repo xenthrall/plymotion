@@ -3,6 +3,8 @@ import { cn, frameUrl } from "@/lib/utils";
 
 /** Plymouth's script module refreshes at a fixed 50 Hz and advances one frame per refresh. */
 export const PLYMOUTH_HZ = 50;
+/** Where generated scripts (and bgrt, and GDM's login logo) place the watermark. */
+const WATERMARK_ALIGN = { x: 0.5, y: 0.96 };
 
 type Props = {
   template: string;
@@ -18,6 +20,8 @@ type Props = {
    */
   mode?: "fit" | "screen";
   screen?: { width: number; height: number };
+  /** Logo drawn where Plymouth draws the theme's watermark (only in "screen" mode). */
+  watermark?: string | null;
   className?: string;
   onFrame?: (index: number) => void;
 };
@@ -37,6 +41,7 @@ export function FramePlayer({
   maxFrames,
   mode = "fit",
   screen,
+  watermark,
   className,
   onFrame,
 }: Props) {
@@ -77,6 +82,13 @@ export function FramePlayer({
     };
   }, [images]);
 
+  const watermarkImage = useMemo(() => {
+    if (!watermark) return null;
+    const img = new Image();
+    img.src = watermark;
+    return img;
+  }, [watermark]);
+
   const ready = images.length > 0 && loaded >= Math.min(images.length, 1);
 
   useEffect(() => {
@@ -113,6 +125,16 @@ export function FramePlayer({
       const dh = img.naturalHeight * scale;
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      const wm = watermarkImage;
+      if (mode === "screen" && screen && wm?.complete && wm.naturalWidth > 0) {
+        const ww = wm.naturalWidth * scale;
+        const wh = wm.naturalHeight * scale;
+        const sx = (w - screen.width * scale) / 2;
+        const sy = (h - screen.height * scale) / 2;
+        const x = sx + (screen.width - wm.naturalWidth) * WATERMARK_ALIGN.x * scale;
+        const y = sy + (screen.height - wm.naturalHeight) * WATERMARK_ALIGN.y * scale;
+        ctx.drawImage(wm, x, y, ww, wh);
+      }
       onFrame?.(indexes[frame] ?? 1);
     };
 
@@ -136,7 +158,7 @@ export function FramePlayer({
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, [ready, images, playing, effectiveFps, mode, screen, indexes, onFrame]);
+  }, [ready, images, playing, effectiveFps, mode, screen, indexes, onFrame, watermarkImage]);
 
   return (
     <div className={cn("relative", className)}>

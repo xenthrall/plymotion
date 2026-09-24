@@ -51,6 +51,7 @@ def start_convert(body: ConvertRequest, request: Request) -> JobAccepted:
         video=Path(path), name=body.name.strip(), max_width=body.max_width,
         max_height=body.max_height, fps=body.fps, colors=body.colors,
         trim_start=body.trim_start, trim_duration=body.trim_duration,
+        boot_logo=body.boot_logo,
     )
     try:
         opts.validate()

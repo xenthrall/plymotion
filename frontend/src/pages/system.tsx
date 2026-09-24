@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { api, call, type InstalledTheme } from "@/api/client";
-import { useRunningJobs } from "@/api/jobs";
+import { SYSTEM_JOB_KINDS, useRunningJobs } from "@/api/jobs";
 import { useInstalledThemes, useJobMutation } from "@/api/queries";
 import { BootSimulator } from "@/components/boot-simulator";
 import { useConfirm } from "@/components/confirm";
@@ -31,17 +31,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-
-const SYSTEM_KINDS = new Set([
-  "install",
-  "activate",
-  "uninstall",
-  "restore-backup",
-  "reset-text",
-  "preview",
-  "login-logo",
-  "login-logo-restore",
-]);
 
 function ThemeRow({
   theme,
@@ -94,6 +83,7 @@ function ThemeRow({
           )}
           {theme.is_plymotion && <Badge>Plymotion</Badge>}
           {theme.has_backup && <Badge variant="outline">Backup</Badge>}
+          {theme.is_plymotion && theme.watermark_url && <Badge variant="secondary">Logo</Badge>}
         </div>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {theme.description || theme.dir_name}
@@ -171,7 +161,7 @@ function ThemeRow({
 
 export function SystemPage() {
   const { data: themes, isLoading } = useInstalledThemes();
-  const running = useRunningJobs().filter((j) => SYSTEM_KINDS.has(j.kind));
+  const running = useRunningJobs().filter((j) => SYSTEM_JOB_KINDS.has(j.kind));
   const busy = running.length > 0;
   const confirm = useConfirm();
   const [simulated, setSimulated] = useState<InstalledTheme | null>(null);
@@ -295,6 +285,7 @@ export function SystemPage() {
           name={simulated.name}
           template={simulated.frame_url_template}
           count={simulated.frame_count}
+          watermark={simulated.watermark_url}
         />
       )}
     </Page>

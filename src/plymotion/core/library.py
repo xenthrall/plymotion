@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from plymotion.core.sorting import natural_sort_key
+from plymotion.core.template_generator import WATERMARK_FILENAME
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 LIBRARY_DIR = PROJECT_ROOT / "library"
@@ -56,6 +57,7 @@ class LibraryTheme:
     thumbnail: Path | None
     colors: int = 0
     total_bytes: int = 0
+    boot_logo: bool = False
 
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -69,6 +71,13 @@ def is_valid_slug(slug: str) -> bool:
 def save_manifest(theme_dir: Path, **metadata: object) -> None:
     """Write theme.json with arbitrary metadata into an existing theme directory."""
     (theme_dir / MANIFEST_NAME).write_text(json.dumps(metadata, indent=2))
+
+
+def update_manifest(theme_dir: Path, **changes: object) -> None:
+    """Merge `changes` into an existing theme.json."""
+    data = json.loads((theme_dir / MANIFEST_NAME).read_text())
+    data.update(changes)
+    save_manifest(theme_dir, **data)
 
 
 def sorted_frames(theme_dir: Path) -> list[Path]:
@@ -98,6 +107,7 @@ def _load_theme(theme_dir: Path) -> LibraryTheme | None:
         thumbnail=frames[0] if frames else None,
         colors=data.get("colors", 0),
         total_bytes=int(total_bytes),
+        boot_logo=(theme_dir / WATERMARK_FILENAME).is_file(),
     )
 
 

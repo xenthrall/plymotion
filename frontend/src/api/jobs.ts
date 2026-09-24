@@ -77,6 +77,18 @@ class JobsStore {
 
 export const jobsStore = new JobsStore();
 
+/** Job kinds that run through pkexec; the server allows only one at a time ("system" lock). */
+export const SYSTEM_JOB_KINDS = new Set([
+  "install",
+  "activate",
+  "uninstall",
+  "restore-backup",
+  "reset-text",
+  "preview",
+  "login-logo",
+  "login-logo-restore",
+]);
+
 export function useJobsState(): State {
   return useSyncExternalStore(jobsStore.subscribe, jobsStore.getState);
 }

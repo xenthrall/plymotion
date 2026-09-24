@@ -20,7 +20,7 @@ import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { api, call, errorMessage, type LibraryTheme, type VideoInfo } from "@/api/client";
 import { jobsStore, useJob, useJobsState } from "@/api/jobs";
-import { useJobMutation, usePrefs, useUpdatePrefs } from "@/api/queries";
+import { useJobMutation, useLoginLogo, usePrefs, useUpdatePrefs } from "@/api/queries";
 import { BootSimulator } from "@/components/boot-simulator";
 import { useConfirm } from "@/components/confirm";
 import { FramePlayer, PLYMOUTH_HZ } from "@/components/frame-player";
@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
 import { hasExtension, useFileDrop, VIDEO_EXTENSIONS } from "@/lib/desktop";
 import { cn, formatBytes, formatClock, formatSeconds } from "@/lib/utils";
@@ -52,8 +53,8 @@ const SIZES = [
 const FPS = [10, 15, 24, 25, 30, 50, 60];
 const COLORS = [16, 32, 64, 128, 256];
 
-type Settings = { name: string; size: string; fps: number; colors: number };
-const DEFAULTS: Settings = { name: "", size: "320x240", fps: 30, colors: 64 };
+type Settings = { name: string; size: string; fps: number; colors: number; bootLogo: boolean };
+const DEFAULTS: Settings = { name: "", size: "320x240", fps: 30, colors: 64, bootLogo: true };
 
 function nameFromPath(path: string) {
   const base = path.split("/").pop() ?? "tema";
@@ -377,6 +378,12 @@ function SettingsCard({
           </div>
         </div>
 
+        <BootLogoSwitch
+          checked={settings.bootLogo}
+          disabled={disabled}
+          onChange={(bootLogo) => setSettings({ bootLogo })}
+        />
+
         {info && <EstimatePanel info={info} range={range} fps={settings.fps} />}
 
         <Button
@@ -389,6 +396,48 @@ function SettingsCard({
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+function BootLogoSwitch({
+  checked,
+  disabled,
+  onChange,
+}: {
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const { data: logo } = useLoginLogo();
+  const available = !!logo?.current_url;
+  return (
+    <div className="flex items-center gap-3 rounded-lg border p-3">
+      <div className="grid h-9 w-14 shrink-0 place-items-center rounded-md bg-stage">
+        {available && (
+          <img src={logo.current_url!} alt="" className="max-h-7 max-w-12 object-contain" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <Label htmlFor="boot-logo" className="text-[13px]">
+          Logo del login en el arranque
+        </Label>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {available ? (
+            "Abajo, donde luego aparece en el login."
+          ) : (
+            <>
+              Sin logo de login. <Link to="/login" className="text-primary hover:underline">Configurar</Link>
+            </>
+          )}
+        </p>
+      </div>
+      <Switch
+        id="boot-logo"
+        checked={checked && available}
+        disabled={disabled || !available}
+        onCheckedChange={onChange}
+      />
+    </div>
   );
 }
 
@@ -466,6 +515,7 @@ function ResultCard({ theme, onReset }: { theme: LibraryTheme; onReset: () => vo
         template={theme.frame_url_template}
         count={theme.frame_count}
         size={{ width: theme.width, height: theme.height }}
+        watermark={theme.watermark_url}
       />
     </motion.div>
   );
@@ -567,6 +617,7 @@ export function ConvertPage() {
           colors: settings.colors,
           trim_start: start,
           trim_duration: full ? null : end - start,
+          boot_logo: settings.bootLogo,
         },
       }),
     );
@@ -584,7 +635,12 @@ export function ConvertPage() {
       if (!ok) return;
     }
     updatePrefs.mutate({
-      convert_defaults: { size: settings.size, fps: settings.fps, colors: settings.colors },
+      convert_defaults: {
+        size: settings.size,
+        fps: settings.fps,
+        colors: settings.colors,
+        bootLogo: settings.bootLogo,
+      },
     });
     const created = await convert.mutateAsync({ path: info.path }).catch(() => null);
     if (created) {

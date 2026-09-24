@@ -71,3 +71,21 @@ def test_estimate_loop_seconds_rejects_non_positive_rate() -> None:
     """A zero or negative refresh rate is invalid."""
     with pytest.raises(ValueError):
         estimate_loop_seconds(100, refresh_rate=0)
+
+
+def test_generate_script_without_watermark_by_default(tmp_path: Path) -> None:
+    output = tmp_path / "test.script"
+    generate_script(output, 10)
+    assert "watermark" not in output.read_text()
+
+
+def test_generate_script_with_watermark(tmp_path: Path) -> None:
+    """The watermark uses bgrt's alignment, relative to ImageDir, drawn above the frames."""
+    output = tmp_path / "test.script"
+    generate_script(output, 10, watermark=True)
+
+    content = output.read_text()
+    assert 'Image("/watermark.png")' in content
+    assert "* 0.96" in content and "* 0.5" in content
+    assert "watermark.SetZ(20)" in content
+    assert content.index("watermark_image") < content.index("video_image_arr")

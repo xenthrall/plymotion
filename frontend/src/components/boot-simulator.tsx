@@ -20,13 +20,22 @@ type Props = {
   template: string;
   count: number;
   size?: { width: number; height: number };
+  watermark?: string | null;
 };
 
 /**
  * Plays a theme exactly as Plymouth will: every frame, 50 per second, centered
  * at its real pixel size on a black screen of the chosen resolution.
  */
-export function BootSimulator({ open, onOpenChange, name, template, count, size }: Props) {
+export function BootSimulator({
+  open,
+  onOpenChange,
+  name,
+  template,
+  count,
+  size,
+  watermark,
+}: Props) {
   const [screenId, setScreenId] = useState("1920x1080");
   const [playing, setPlaying] = useState(true);
   const screen = SCREENS.find((s) => s.id === screenId) ?? SCREENS[1]!;
@@ -81,13 +90,14 @@ export function BootSimulator({ open, onOpenChange, name, template, count, size 
                 playing={playing}
                 mode="screen"
                 screen={screen}
+                watermark={watermark}
                 className="size-full"
               />
             )}
           </div>
           <p className="mt-3 text-center text-[11px] text-white/40">
             Así se verá al arrancar: Plymouth centra la animación a su tamaño real sobre fondo
-            negro.
+            negro{watermark ? ", con el logo del login abajo" : ""}.
           </p>
         </div>
       </DialogContent>

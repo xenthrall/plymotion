@@ -9,6 +9,7 @@ import {
   Search,
   Sparkles,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
@@ -50,6 +51,29 @@ function ThemeCard({
   const install = useJobMutation(() =>
     call(api.POST("/api/library/{slug}/install", { params: { path: { slug: theme.slug } } })),
   );
+  const bootLogo = useMutation({
+    mutationFn: (enabled: boolean) =>
+      call(
+        api.POST("/api/library/{slug}/boot-logo", {
+          params: { path: { slug: theme.slug } },
+          body: { enabled },
+        }),
+      ),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: keys.library });
+      const verb = updated.boot_logo ? "añadido a" : "quitado de";
+      if (updated.installed) {
+        toast.success(`Logo ${verb} «${theme.name}»`, {
+          description: "Reinstala el tema para que cambie en el arranque.",
+          action: { label: "Reinstalar", onClick: () => install.mutate(undefined) },
+        });
+      } else {
+        toast.success(`Logo ${verb} «${theme.name}»`);
+      }
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
   const remove = useMutation({
     mutationFn: () =>
       call(api.DELETE("/api/library/{slug}", { params: { path: { slug: theme.slug } } })),
@@ -119,6 +143,9 @@ function ThemeCard({
               <DropdownMenuItem onSelect={onSimulate}>
                 <MonitorPlay /> Simular arranque
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => bootLogo.mutate(!theme.boot_logo)}>
+                <UserRound /> {theme.boot_logo ? "Quitar logo del arranque" : "Añadir logo del login al arranque"}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
                   call(
@@ -156,6 +183,11 @@ function ThemeCard({
           <Badge variant="secondary">{theme.frame_count} frames</Badge>
           <Badge variant="secondary">{formatSeconds(theme.loop_seconds)}</Badge>
           <Badge variant="secondary">{formatBytes(theme.total_bytes)}</Badge>
+          {theme.boot_logo && (
+            <Badge>
+              <UserRound /> Logo
+            </Badge>
+          )}
         </div>
         <Button
           className="mt-4 w-full"
@@ -274,6 +306,7 @@ export function GalleryPage() {
           template={simulated.frame_url_template}
           count={simulated.frame_count}
           size={{ width: simulated.width, height: simulated.height }}
+          watermark={simulated.watermark_url}
         />
       )}
     </Page>

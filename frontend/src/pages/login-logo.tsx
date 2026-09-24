@@ -1,10 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { CircleAlert, ImageUp, RotateCcw, UserRound, Wand2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CircleAlert, ImageUp, MonitorPlay, RotateCcw, UserRound, Wand2 } from "lucide-react";
+import { Link } from "react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, call, errorMessage } from "@/api/client";
-import { useRunningJobs } from "@/api/jobs";
-import { useJobMutation, useLoginLogo } from "@/api/queries";
+import { SYSTEM_JOB_KINDS, useRunningJobs } from "@/api/jobs";
+import {
+  keys,
+  useInstalledThemes,
+  useJobMutation,
+  useLibrary,
+  useLoginLogo,
+} from "@/api/queries";
 import { useConfirm } from "@/components/confirm";
 import { Page, PageHeader } from "@/components/page";
 import { PickButton } from "@/components/path-picker";
@@ -70,13 +77,99 @@ function useImageSize(url: string | null) {
   return state && state.url === url ? { w: state.w, h: state.h } : null;
 }
 
+/**
+ * Puts the login logo into the active Plymotion theme's boot splash, at the
+ * spot GDM draws it, so it stays put from boot to login. Updates the
+ * library copy, then reinstalls (pkexec + initramfs).
+ */
+function BootLogoCard({ busy, hasLogo }: { busy: boolean; hasLogo: boolean }) {
+  const { data: installed } = useInstalledThemes();
+  const { data: library } = useLibrary();
+  const confirm = useConfirm();
+  const qc = useQueryClient();
+  const active = installed?.find((t) => t.is_default);
+  const libraryTheme = library?.find((t) => t.slug === active?.dir_name);
+  const onBoot = !!active?.watermark_url && !!active?.is_plymotion;
+
+  const apply = useJobMutation(async (enabled: boolean) => {
+    const slug = libraryTheme!.slug;
+    await call(
+      api.POST("/api/library/{slug}/boot-logo", { params: { path: { slug } }, body: { enabled } }),
+    );
+    qc.invalidateQueries({ queryKey: keys.library });
+    return call(api.POST("/api/library/{slug}/install", { params: { path: { slug } } }));
+  });
+
+  const run = async (enabled: boolean) => {
+    const ok = await confirm({
+      title: enabled ? "Mostrar el logo al arrancar" : "Quitar el logo del arranque",
+      description: enabled
+        ? `Se añade el logo actual del login a «${active?.name}», abajo, en la misma posición que en el login, y se reinstala el tema (regenera el initramfs).`
+        : `Se quita el logo de «${active?.name}» y se reinstala el tema.`,
+      confirmLabel: enabled ? "Aplicar al arranque" : "Quitar",
+      privileged: true,
+    });
+    if (ok) apply.mutate(enabled);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MonitorPlay className="size-4 text-primary" /> En el arranque
+          {onBoot && <Badge variant="success">Activo</Badge>}
+        </CardTitle>
+        <CardDescription>
+          Muestra este logo abajo durante la animación de arranque, en el mismo lugar que el login.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!active ? null : !libraryTheme ? (
+          <p className="text-[13px] text-muted-foreground">
+            El tema activo («{active.name}») no es de tu galería. Activa o{" "}
+            <Link to="/crear" className="text-primary hover:underline">
+              crea un tema
+            </Link>{" "}
+            de Plymotion para usar esta opción.
+          </p>
+        ) : (
+          <>
+            <Button
+              className="w-full"
+              variant={onBoot ? "secondary" : "default"}
+              disabled={!hasLogo || busy || apply.isPending}
+              onClick={() => run(true)}
+            >
+              <MonitorPlay /> {onBoot ? "Actualizar en el arranque" : "Aplicar al arranque"}
+            </Button>
+            {onBoot && (
+              <Button
+                className="w-full"
+                variant="ghost"
+                disabled={busy || apply.isPending}
+                onClick={() => run(false)}
+              >
+                Quitar del arranque
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Tema activo: {active.name}. El logo del fabricante que muestra la BIOS/UEFI al
+              encender no se puede cambiar desde el sistema.
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function LoginLogoPage() {
   const { data: state } = useLoginLogo();
   const [source, setSource] = useState<string | null>(null);
   const [height, setHeight] = useState(72);
   const [view, setView] = useState<"new" | "current">("new");
   const confirm = useConfirm();
-  const busy = useRunningJobs().some((j) => j.kind.startsWith("login-logo"));
+  const busy = useRunningJobs().some((j) => SYSTEM_JOB_KINDS.has(j.kind));
 
   const { data: preview, error } = useQuery({
     queryKey: ["logo-preview", source, height],
@@ -266,6 +359,7 @@ export function LoginLogoPage() {
               </Button>
             </CardContent>
           </Card>
+          <BootLogoCard busy={busy} hasLogo={!!state?.current_url} />
           {!source && (
             <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
               <ImageUp className="size-3.5" /> También puedes arrastrar una imagen a la ventana.

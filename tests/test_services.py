@@ -155,3 +155,49 @@ def test_sequence_output_path_rejects_traversal() -> None:
 def test_sequence_validate() -> None:
     with pytest.raises(ValueError, match="al menos una"):
         sequence.SequenceOptions(images=[], name="x").validate()
+
+
+def test_convert_with_boot_logo_adds_watermark(
+    tmp_path: Path, library_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from plymotion.services import boot_logo
+
+    logo = tmp_path / "logo.png"
+    Image.new("RGBA", (187, 72)).save(logo)
+    monkeypatch.setattr(convert, "extract_frames", _fake_extract(3))
+    monkeypatch.setattr(boot_logo, "login_logo_source", lambda: logo)
+
+    theme = convert.convert_video(
+        convert.ConvertOptions(video=_video(tmp_path), name="Con logo", boot_logo=True)
+    )
+
+    assert theme.boot_logo
+    assert (theme.directory / "watermark.png").is_file()
+    assert 'Image("/watermark.png")' in (theme.directory / "con-logo.script").read_text()
+
+
+def test_toggle_library_boot_logo(
+    tmp_path: Path, library_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from plymotion.services import boot_logo
+
+    monkeypatch.setattr(convert, "extract_frames", _fake_extract(4))
+    theme = convert.convert_video(convert.ConvertOptions(video=_video(tmp_path), name="t"))
+    script = theme.directory / "t.script"
+    assert not theme.boot_logo
+
+    monkeypatch.setattr(boot_logo, "login_logo_source", lambda: None)
+    with pytest.raises(ValueError, match="logo de login"):
+        boot_logo.set_library_boot_logo("t", True)
+
+    logo = tmp_path / "logo.png"
+    Image.new("RGBA", (900, 100)).save(logo)
+    monkeypatch.setattr(boot_logo, "login_logo_source", lambda: logo)
+    enabled = boot_logo.set_library_boot_logo("t", True)
+    assert enabled.boot_logo and "i < 4" in script.read_text()
+    with Image.open(theme.directory / "watermark.png") as img:
+        assert img.width <= 480
+
+    disabled = boot_logo.set_library_boot_logo("t", False)
+    assert not disabled.boot_logo
+    assert "watermark" not in script.read_text()

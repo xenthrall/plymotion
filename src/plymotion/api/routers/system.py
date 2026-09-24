@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from plymotion.api.deps import SYSTEM_LOCK, ApiException, submit
 from plymotion.api.schemas import InstalledTheme, JobAccepted, PreviewRequest, RestoreBackupRequest
 from plymotion.core import installer, library
+from plymotion.core.template_generator import WATERMARK_FILENAME
 from plymotion.services import themes
 from plymotion.services.progress import Reporter
 
@@ -30,6 +31,10 @@ def _to_schema(theme: installer.InstalledTheme) -> InstalledTheme:
         frame_count=len(frames),
         thumbnail_url=f"{base}/1" if frames else None,
         frame_url_template=f"{base}/{{n}}" if frames else None,
+        watermark_url=(
+            f"/api/system/themes/{theme.directory.name}/watermark"
+            if (theme.directory / WATERMARK_FILENAME).is_file() else None
+        ),
     )
 
 
@@ -54,6 +59,14 @@ def installed_frame(dir_name: str, index: int) -> FileResponse:
     except themes.NotFound as exc:
         raise ApiException(404, "frame_not_found", str(exc))
     return FileResponse(path, media_type="image/png", headers={"Cache-Control": "no-cache"})
+
+
+@router.get("/themes/{dir_name}/watermark", response_class=FileResponse)
+def installed_watermark(dir_name: str) -> FileResponse:
+    path = _theme_dir(dir_name) / WATERMARK_FILENAME
+    if not path.is_file():
+        raise ApiException(404, "no_boot_logo", "Este tema no tiene logo de arranque.")
+    return FileResponse(path, headers={"Cache-Control": "no-cache"})
 
 
 @router.post("/themes/{dir_name}/activate", status_code=202, response_model=JobAccepted)

@@ -216,6 +216,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/library/{slug}/watermark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Library Watermark */
+        get: operations["library_watermark_api_library__slug__watermark_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/library/{slug}/boot-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Boot Logo
+         * @description Add the current login logo to a theme's boot splash, or remove it (library copy only).
+         */
+        post: operations["set_boot_logo_api_library__slug__boot_logo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/library/{slug}/install": {
         parameters: {
             query?: never;
@@ -276,6 +313,23 @@ export interface paths {
         };
         /** Installed Frame */
         get: operations["installed_frame_api_system_themes__dir_name__frames__index__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/themes/{dir_name}/watermark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installed Watermark */
+        get: operations["installed_watermark_api_system_themes__dir_name__watermark_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -562,6 +616,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BootLogoRequest */
+        BootLogoRequest: {
+            /** Enabled */
+            enabled: boolean;
+        };
         /** Capabilities */
         Capabilities: {
             /** Ffmpeg */
@@ -608,6 +667,11 @@ export interface components {
             trim_start: number;
             /** Trim Duration */
             trim_duration?: number | null;
+            /**
+             * Boot Logo
+             * @default false
+             */
+            boot_logo: boolean;
         };
         /** Estimate */
         Estimate: {
@@ -657,6 +721,8 @@ export interface components {
             thumbnail_url: string | null;
             /** Frame Url Template */
             frame_url_template: string | null;
+            /** Watermark Url */
+            watermark_url: string | null;
         };
         /** JobAccepted */
         JobAccepted: {
@@ -754,6 +820,10 @@ export interface components {
             thumbnail_url: string | null;
             /** Frame Url Template */
             frame_url_template: string;
+            /** Boot Logo */
+            boot_logo: boolean;
+            /** Watermark Url */
+            watermark_url: string | null;
         };
         /** LoginLogoState */
         LoginLogoState: {
@@ -1345,6 +1415,70 @@ export interface operations {
             };
         };
     };
+    library_watermark_api_library__slug__watermark_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_boot_logo_api_library__slug__boot_logo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BootLogoRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryTheme"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     install_api_library__slug__install_post: {
         parameters: {
             query?: never;
@@ -1432,6 +1566,35 @@ export interface operations {
             path: {
                 dir_name: string;
                 index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    installed_watermark_api_system_themes__dir_name__watermark_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dir_name: string;
             };
             cookie?: never;
         };

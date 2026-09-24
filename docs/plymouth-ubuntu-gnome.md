@@ -183,6 +183,34 @@ sobrevive a las actualizaciones de `gdm3`.
   `dconf update`). Plymotion hoy solo escribe en la ruta de Ubuntu y
   desactiva la función si `/usr/share/gdm/dconf` no existe.
 
+### 3.2 El mismo logo durante el arranque
+
+Lo que se ve **antes** de la animación es el logo del fabricante (BGRT), que
+dibuja el firmware UEFI. No se puede cambiar desde el sistema (§3, tabla).
+
+Lo que sí se puede: el logo de Ubuntu que aparece abajo en el arranque
+normal es la *marca de agua* de los themes `bgrt`/`spinner`
+(`WatermarkImage` = `spinner/watermark.png`, enlace a
+`/usr/share/pixmaps/ubuntu-logo-text-dark.png`), con
+`WatermarkHorizontalAlignment=.5` y `WatermarkVerticalAlignment=.96`. Es la
+misma posición que usa GDM para el logo del login (§3.1), y por eso
+en Ubuntu el logo "no se mueve" del splash al login.
+
+Los themes `script` de Plymotion no traen marca de agua. Plymotion la agrega
+como opción (vista **Crear tema** o **Logo del login → En el arranque**):
+
+- Copia el logo que GDM muestra en ese momento (el de Plymotion o el de la
+  distro) al tema como `watermark.png`, junto a los frames.
+- El `.script` generado dibuja un sprite con la misma fórmula de
+  alineación, `(pantalla - imagen) * 0.5` en X y `* 0.96` en Y, con Z por
+  encima de la animación. Se crea antes de cargar los frames para que
+  aparezca desde el primer instante.
+- El cambio se hace en la copia de la galería y llega al sistema al
+  reinstalar el tema (con initramfs, como siempre). No toca `bgrt`,
+  `spinner` ni ningún archivo de la distro.
+- La marca de agua es una copia: si luego cambias el logo del login, hay
+  que volver a aplicarlo al arranque.
+
 ---
 
 ## 4. Cómo elige Ubuntu el theme y cómo llega al initramfs

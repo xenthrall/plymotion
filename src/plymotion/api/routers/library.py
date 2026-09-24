@@ -7,9 +7,10 @@ from fastapi.responses import FileResponse
 
 from plymotion.api.deps import SYSTEM_LOCK, ApiException, submit
 from plymotion.api.routers.files import reveal
-from plymotion.api.schemas import JobAccepted, LibraryTheme
+from plymotion.api.schemas import BootLogoRequest, JobAccepted, LibraryTheme
 from plymotion.core import library
-from plymotion.services import themes
+from plymotion.core.template_generator import WATERMARK_FILENAME
+from plymotion.services import boot_logo, themes
 from plymotion.services.progress import Reporter
 
 router = APIRouter(tags=["library"])
@@ -24,6 +25,8 @@ def to_library_theme(theme: library.LibraryTheme, installed: bool) -> LibraryThe
         source_video=theme.source_video, created_at=theme.created_at, installed=installed,
         thumbnail_url=f"{base}/1" if theme.thumbnail else None,
         frame_url_template=f"{base}/{{n}}",
+        boot_logo=theme.boot_logo,
+        watermark_url=f"/api/library/{theme.slug}/watermark" if theme.boot_logo else None,
     )
 
 
@@ -63,6 +66,25 @@ def library_frame(slug: str, index: int) -> FileResponse:
     # new slug), so the client can cache them hard.
     return FileResponse(path, media_type="image/png",
                         headers={"Cache-Control": "private, max-age=86400, immutable"})
+
+
+@router.get("/library/{slug}/watermark", response_class=FileResponse)
+def library_watermark(slug: str) -> FileResponse:
+    path = _require(slug).directory / WATERMARK_FILENAME
+    if not path.is_file():
+        raise ApiException(404, "no_boot_logo", "Este tema no tiene logo de arranque.")
+    return FileResponse(path, media_type="image/png", headers={"Cache-Control": "no-cache"})
+
+
+@router.post("/library/{slug}/boot-logo", response_model=LibraryTheme)
+def set_boot_logo(slug: str, body: BootLogoRequest) -> LibraryTheme:
+    """Add the current login logo to a theme's boot splash, or remove it (library copy only)."""
+    theme = _require(slug)
+    try:
+        updated = boot_logo.set_library_boot_logo(theme.slug, body.enabled)
+    except ValueError as exc:
+        raise ApiException(409, "no_login_logo", str(exc))
+    return to_library_theme(updated, updated.slug in themes.installed_slugs())
 
 
 @router.post("/library/{slug}/install", status_code=202, response_model=JobAccepted)

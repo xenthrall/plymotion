@@ -123,6 +123,7 @@ class ConvertRequest(BaseModel):
     colors: int = Field(default=DEFAULT_COLORS, ge=2, le=256)
     trim_start: float = Field(default=0, ge=0)
     trim_duration: float | None = Field(default=None, gt=0)
+    boot_logo: bool = False
 
 
 # -- library ---------------------------------------------------------------
@@ -143,6 +144,12 @@ class LibraryTheme(BaseModel):
     installed: bool
     thumbnail_url: str | None
     frame_url_template: str
+    boot_logo: bool
+    watermark_url: str | None
+
+
+class BootLogoRequest(BaseModel):
+    enabled: bool
 
 
 # -- system ----------------------------------------------------------------
@@ -158,6 +165,7 @@ class InstalledTheme(BaseModel):
     frame_count: int
     thumbnail_url: str | None
     frame_url_template: str | None
+    watermark_url: str | None
 
 
 class PreviewRequest(BaseModel):

@@ -492,6 +492,94 @@
         }
       }
     },
+    "/api/library/{slug}/watermark": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Library Watermark",
+        "operationId": "library_watermark_api_library__slug__watermark_get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/library/{slug}/boot-logo": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Set Boot Logo",
+        "description": "Add the current login logo to a theme's boot splash, or remove it (library copy only).",
+        "operationId": "set_boot_logo_api_library__slug__boot_logo_post",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootLogoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTheme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/library/{slug}/install": {
       "post": {
         "tags": [
@@ -618,6 +706,41 @@
             "schema": {
               "type": "integer",
               "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/themes/{dir_name}/watermark": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Installed Watermark",
+        "operationId": "installed_watermark_api_system_themes__dir_name__watermark_get",
+        "parameters": [
+          {
+            "name": "dir_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dir Name"
             }
           }
         ],
@@ -1209,6 +1332,19 @@
   },
   "components": {
     "schemas": {
+      "BootLogoRequest": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "BootLogoRequest"
+      },
       "Capabilities": {
         "properties": {
           "ffmpeg": {
@@ -1299,6 +1435,11 @@
               }
             ],
             "title": "Trim Duration"
+          },
+          "boot_logo": {
+            "type": "boolean",
+            "title": "Boot Logo",
+            "default": false
           }
         },
         "type": "object",
@@ -1434,6 +1575,17 @@
               }
             ],
             "title": "Frame Url Template"
+          },
+          "watermark_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watermark Url"
           }
         },
         "type": "object",
@@ -1446,7 +1598,8 @@
           "has_backup",
           "frame_count",
           "thumbnail_url",
-          "frame_url_template"
+          "frame_url_template",
+          "watermark_url"
         ],
         "title": "InstalledTheme"
       },
@@ -1740,6 +1893,21 @@
           "frame_url_template": {
             "type": "string",
             "title": "Frame Url Template"
+          },
+          "boot_logo": {
+            "type": "boolean",
+            "title": "Boot Logo"
+          },
+          "watermark_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watermark Url"
           }
         },
         "type": "object",
@@ -1757,7 +1925,9 @@
           "created_at",
           "installed",
           "thumbnail_url",
-          "frame_url_template"
+          "frame_url_template",
+          "boot_logo",
+          "watermark_url"
         ],
         "title": "LibraryTheme"
       },

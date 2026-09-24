@@ -12,8 +12,27 @@ from string import Template
 # frame_count / PLYMOUTH_DEFAULT_REFRESH_RATE, not the extraction fps.
 PLYMOUTH_DEFAULT_REFRESH_RATE = 50
 
+# Optional logo pinned near the bottom of the screen, like the watermark of
+# Ubuntu's bgrt/spinner themes: same file name and same alignment (their
+# WatermarkHorizontalAlignment=.5 / WatermarkVerticalAlignment=.96), which
+# is also where GDM draws its login logo (plymouthWatermarkVerticalAlignment
+# in gnome-shell's loginDialog.js). With the login logo as watermark, the
+# logo stays put from the boot splash to the login screen.
+WATERMARK_FILENAME = "watermark.png"
+WATERMARK_HORIZONTAL_ALIGNMENT = 0.5
+WATERMARK_VERTICAL_ALIGNMENT = 0.96
+
+WATERMARK_TEMPLATE = Template("""\
+watermark_image = Image("/$filename");
+watermark = Sprite(watermark_image);
+watermark.SetX((Window.GetWidth() - watermark_image.GetWidth()) * $h_align);
+watermark.SetY((Window.GetHeight() - watermark_image.GetHeight()) * $v_align);
+watermark.SetZ(20);
+
+""")
+
 SCRIPT_TEMPLATE = Template("""\
-for(i = 0; i < $frame_count; i++)
+${watermark}for(i = 0; i < $frame_count; i++)
   video_image_arr[i] = Image("/frame" + (i + 1) + ".png");
 
 pos_x = Window.GetWidth()/2 - video_image_arr[0].GetWidth()/2;
@@ -56,8 +75,12 @@ ScriptFile=$script_file
 """)
 
 
-def generate_script(output_path: Path, frame_count: int) -> None:
+def generate_script(output_path: Path, frame_count: int, watermark: bool = False) -> None:
     """Write the .script file with looping support.
+
+    With `watermark`, the script also draws WATERMARK_FILENAME (which must
+    sit next to the frames) near the bottom of the screen. It is set up
+    before the frames load, so it shows from the very first frame.
 
     Frame paths are written relative to the theme's ImageDir (e.g.
     "/frame1.png"), not as a baked-in absolute install path: Plymouth's
@@ -65,7 +88,12 @@ def generate_script(output_path: Path, frame_count: int) -> None:
     embedding ImageDir again here would double it up into a path that
     doesn't exist and silently fail to load any frame (blank/dark splash).
     """
-    content = SCRIPT_TEMPLATE.substitute(frame_count=frame_count)
+    watermark_block = WATERMARK_TEMPLATE.substitute(
+        filename=WATERMARK_FILENAME,
+        h_align=WATERMARK_HORIZONTAL_ALIGNMENT,
+        v_align=WATERMARK_VERTICAL_ALIGNMENT,
+    ) if watermark else ""
+    content = SCRIPT_TEMPLATE.substitute(frame_count=frame_count, watermark=watermark_block)
     output_path.write_text(content)
 
 

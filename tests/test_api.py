@@ -316,3 +316,23 @@ def test_auth_next_only_allows_local_paths(config: ApiConfig, env: Path) -> None
         evil = anon.get("/auth", params={"token": config.token, "next": "//evil.example"},
                         follow_redirects=False)
         assert evil.headers["location"] == "/"
+
+
+def test_boot_logo_endpoint(
+    client: TestClient, env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from plymotion.services import boot_logo
+
+    make_library_theme(env)
+    logo = env / "logo.png"
+    Image.new("RGBA", (187, 72)).save(logo)
+    monkeypatch.setattr(boot_logo, "login_logo_source", lambda: logo)
+
+    body = client.post("/api/library/demo/boot-logo", json={"enabled": True},
+                       headers=HEADERS).json()
+    assert body["boot_logo"] and body["watermark_url"] == "/api/library/demo/watermark"
+    assert client.get(body["watermark_url"]).status_code == 200
+
+    monkeypatch.setattr(boot_logo, "login_logo_source", lambda: None)
+    refused = client.post("/api/library/demo/boot-logo", json={"enabled": True}, headers=HEADERS)
+    assert refused.status_code == 409
