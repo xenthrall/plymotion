@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-import plymotion.library as library
-from plymotion.library import (
+import plymotion.core.library as library
+from plymotion.core.library import (
     delete_library_theme,
     list_library_themes,
     sample_preview_frames,

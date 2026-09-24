@@ -9,8 +9,8 @@ from typing import Any
 import pytest
 from PIL import Image
 
-import plymotion.installer as installer
-import plymotion.login_logo as login_logo
+import plymotion.core.installer as installer
+import plymotion.core.login_logo as login_logo
 
 
 class _FakeRun:

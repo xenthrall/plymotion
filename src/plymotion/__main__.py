@@ -1,5 +1,5 @@
 """Allow running as `python -m plymotion`."""
 
-from plymotion.cli import app
+from plymotion.desktop import main
 
-app()
+main()

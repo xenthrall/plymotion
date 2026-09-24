@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from plymotion.sorting import natural_sort_key
+from plymotion.core.sorting import natural_sort_key
 
 
 def test_natural_sort_numeric_order() -> None:

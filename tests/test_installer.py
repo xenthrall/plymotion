@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-import plymotion.installer as installer
-from plymotion.installer import (
+import plymotion.core.installer as installer
+from plymotion.core.installer import (
     activate_theme,
     install_theme,
     list_installed_themes,

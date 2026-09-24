@@ -14,3 +14,7 @@ dist/
 /plymotion-output/
 plymotion-*/
 /library/
+
+# Web client: dependencies and the build output served by the API
+/frontend/node_modules/
+/src/plymotion/web/

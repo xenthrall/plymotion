@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from plymotion.frame_processor import optimize_frames
+from plymotion.core.frame_processor import optimize_frames
 
 
 def test_optimize_frames_fits_within_max_size(tmp_path: Path) -> None:

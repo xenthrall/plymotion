@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-import plymotion.video_extractor as video_extractor
-from plymotion.video_extractor import extract_frames
+import plymotion.core.video_extractor as video_extractor
+from plymotion.core.video_extractor import extract_frames
 
 
 class _FakeRun:

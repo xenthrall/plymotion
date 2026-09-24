@@ -1,229 +1,115 @@
 # Plymotion
 
-Convierte cualquier video en una animación de arranque personalizada para tu sistema Linux usando Plymouth.
+Convierte cualquier video o GIF en la animación de arranque (Plymouth) de tu
+Linux, desde una app de escritorio moderna. El foco es Ubuntu con GNOME.
 
 ## Características
 
-- **GUI con Flet**: convertir, instalar, probar sin reiniciar, restaurar backup o volver a modo texto — todo desde la ventana
-- **CLI en Python**: para automatización/scripting; la GUI es la forma recomendada de uso interactivo
-- **Frame-by-frame**: Extrae frames del video y los convierte en una secuencia de animación
-- **Loop infinito**: La animación se repite continuamente durante el boot
-- **Optimización automática**: Redimensiona y comprime frames para carga rápida
-- **Logo del login (GDM)**: reemplaza el logo de Ubuntu en la pantalla de login por tu propia imagen, y vuelve al original con un clic
-- **Instalación segura**: Backup automático del theme anterior antes de sobreescribir; cada acción privilegiada pasa por un único prompt gráfico de `pkexec`
+- **Crear tema:** elige o arrastra un video o GIF, recórtalo sobre la línea de tiempo y ve en vivo cuántos frames salen y cuánto dura el loop
+- **Simulador de arranque:** reproduce el tema como lo hará Plymouth, a 50 Hz y a tamaño real sobre una pantalla simulada, sin reiniciar
+- **Galería:** tus temas, animados al pasar el cursor; se instalan con un clic
+- **Sistema:** temas instalados; puedes activar, desinstalar, restaurar el backup, probar en vivo o volver a modo texto
+- **Logo del login:** reemplaza el logo de GDM y previsualízalo sobre una réplica de la pantalla de login
+- **Secuencias:** convierte imágenes en MP4 o GIF, por ejemplo para rehacer un tema
+- **Seguro:** backup automático; cada acción de administrador pasa por un único prompt de `pkexec`, y un tema roto nunca impide arrancar
 
-## Instalación
+## Puesta en marcha
+
+Plymotion no se instala en el sistema: se ejecuta desde este repo cuando
+quieres personalizar el arranque, y al cerrar la ventana (o la terminal) no
+queda nada corriendo. Todo lo que genera (galería de temas, preferencias,
+videos de Secuencias) se guarda en `library/`, dentro del repo e ignorado
+por git.
+
+Solo toca el sistema lo que pides explícitamente, siempre tras un prompt de
+`pkexec`: instalar o activar temas en `/usr/share/plymouth/themes` (con
+backup en `/var/backups/plymotion`) y el logo del login en
+`/usr/share/plymotion` y `/usr/share/gdm/dconf`.
+
+Dependencias del sistema (Ubuntu/Debian):
 
 ```bash
-# Clonar el repositorio
+sudo apt install ffmpeg python3-gi gir1.2-webkit2-4.1
+```
+
+- `ffmpeg`: extrae los frames y arma los videos.
+- `python3-gi` y `gir1.2-webkit2-4.1`: la ventana nativa (WebKitGTK). Sin ellas, usa `--browser`.
+- Para el entorno: [uv](https://docs.astral.sh/uv/) y Node 20 o superior (solo para compilar el cliente).
+
+Primera vez:
+
+```bash
 git clone https://github.com/xenthrall/plymotion.git
 cd plymotion
-
-# Instalar con uv
-uv sync
+uv sync                           # crea .venv dentro del repo
+npm --prefix frontend install     # node_modules dentro de frontend/
+npm --prefix frontend run build   # compila el cliente en src/plymotion/web/
 ```
 
-## Uso
-
-### Interfaz gráfica (recomendado)
+Cada vez que quieras usarlo:
 
 ```bash
-plymotion gui
+uv run plymotion            # ventana nativa; ciérrala y listo
+uv run plymotion --browser  # mismo servidor en el navegador; Ctrl+C para salir
 ```
 
-La primera vez descarga el cliente de escritorio de Flet (necesita red);
-los siguientes arranques son instantáneos. Flujo completo, sin tocar la
-terminal:
+## Arquitectura
 
-1. **Examinar** → elige tu video. Se muestra su resolución/duración original.
-2. Ajusta resolución, FPS y nombre del theme.
-3. **Convertir** → extrae y optimiza los frames (barra de progreso + registro
-   paso a paso).
-4. **Instalar** → copia el theme, hace backup del anterior con ese mismo
-   nombre, registra el theme con `update-alternatives` y regenera el
-   initramfs. Pide un único prompt gráfico de administrador (`pkexec`).
-5. **Probar theme instalado** → muestra el splash ya instalado en vivo unos
-   segundos (`plymouthd` + `plymouth show-splash`), sin reiniciar.
-6. Si algo no te convence: **Restaurar backup** (vuelve a la copia anterior
-   de ese theme) o **Volver a modo texto** (fallback seguro garantizado) —
-   ambos también piden `pkexec`.
-
-#### Logo de la pantalla de login
-
-La vista **Login** reemplaza el logo de la distro que GDM muestra abajo en
-la pantalla de login (Ubuntu + GNOME):
-
-1. **Examinar** → elige una imagen (PNG, JPG, WebP o BMP). Lo ideal es un
-   PNG con fondo transparente y colores claros, porque el login es oscuro.
-2. Elige el **alto máximo**: GDM dibuja el logo a su tamaño real en
-   píxeles, sin escalarlo. 72 px es el alto del logo de Ubuntu. La vista
-   previa compara el logo actual con el nuevo a tamaño real.
-3. **Aplicar logo** → copia la imagen redimensionada a
-   `/usr/share/plymotion/login-logo.png` y agrega
-   `/usr/share/gdm/dconf/95-plymotion-logo` (`pkexec`). Se ve la próxima vez
-   que aparezca el login (cerrar sesión o reiniciar).
-4. **Restaurar logo de la distro** → borra esos dos archivos.
-
-No modifica ningún archivo de Ubuntu ni de `/etc/gdm3`. Detalles técnicos en
-[`docs/plymouth-ubuntu-gnome.md`](docs/plymouth-ubuntu-gnome.md) §3.1.
-
-Todas las acciones que tocan el sistema (Instalar, Probar, Restaurar,
-Volver a modo texto, Aplicar/Restaurar logo) muestran antes un diálogo de
-confirmación explicando qué va a pasar.
-
-### Línea de comandos (automatización/scripting)
-
-Se mantiene para scripts y CI; para uso interactivo la GUI es más cómoda.
-
-```bash
-# Convertir video a theme (deja los archivos listos en ./plymotion-output)
-plymotion convert --video-input mi_video.mp4
-
-# Con opciones personalizadas
-plymotion convert \
-  --video-input mi_video.mp4 \
-  --output-dir ./output \
-  --resolution 1920x1080 \
-  --fps 24 \
-  --theme-name mi-theme
-
-# Convertir E instalar de una vez (pide sudo)
-plymotion convert --video-input mi_video.mp4 --install
+```
+ventana pywebview ─▶ cliente React ─(REST + SSE)─▶ API FastAPI ─▶ servicios + jobs ─▶ core
+                                                                                     (ffmpeg, Pillow,
+                                                                                      Plymouth, GDM, pkexec)
 ```
 
-### Opciones CLI
-
-| Opción | Descripción | Default |
-|--------|-------------|---------|
-| `--video-input, -i` | Video de entrada (requerido) | - |
-| `--output-dir, -o` | Directorio de salida | `./plymotion-output` |
-| `--resolution, -r` | Resolución destino (WxH) | `1920x1080` |
-| `--fps, -f` | Frames por segundo | `30` |
-| `--theme-name, -t` | Nombre del tema | `plymotion` |
-| `--image-dir` | Ruta ImageDir escrita en el theme | `/usr/share/plymouth/themes/<theme-name>` |
-| `--install` | Instala el theme generado (usa `installer.py`, pide autenticación gráfica vía `pkexec`) | `false` |
-
-Sin `--install`, `convert` imprime al final el comando manual de instalación
-equivalente (copiar archivos + `update-alternatives` + `update-initramfs`).
-
-## Probar la conversión sin GUI
-
-Si solo quieres revisar los frames generados por CLI, sin instalar nada:
-
-```bash
-uv run plymotion convert -i mi_video.mp4 -o ./salida
-xdg-open ./salida   # revisa los PNG generados (frame1.png, frame2.png, ...)
+```
+src/plymotion/
+├── core/          # dominio: video_extractor, frame_processor, template_generator,
+│                  # installer (pkexec), login_logo, library, image_sequence, sorting
+├── services/      # casos de uso con progreso y cancelación (convert, themes, login_logo, sequence)
+├── jobs/          # JobManager: hilos, eventos en vivo, cancelación, lock "system" para pkexec
+├── api/           # FastAPI: app.py, security.py, schemas.py, routers/
+├── desktop.py     # entry point `plymotion`: Uvicorn + ventana pywebview
+└── web/           # build del cliente (generado con npm run build, no versionado)
+frontend/          # cliente: React 19, Vite, TypeScript, Tailwind v4, Radix/shadcn, TanStack Query
+tests/             # pytest: core, servicios, jobs y API
+docs/              # investigación técnica de Plymouth y GDM
 ```
 
-Si los PNG se ven bien (nítidos, en el orden correcto), la animación
-funcionará igual en Plymouth: el `.script` generado simplemente los muestra
-en loop.
-
-## Seguridad Plymouth
-
-**Plymouth es seguro**: Un theme roto o corrupto NUNCA impide el boot. Plymouth cae en fallback automático a modo texto. El proceso real de boot (systemd/init) continúa sin afectarse.
-
-### Medidas de protección
-
-- **Backup automático**: Se guarda una copia del theme actual antes de sobreescribir
-- **Validación**: Se verifican archivos requeridos (.plymouth, .script, frames) antes de instalar
-- **Rollback**: Botón "Restaurar backup" en la GUI (o `installer.restore_backup()`) si algo falla
-
-### Recuperación si Plymouth falla
-
-Si el boot se ve raro o en negro, la forma más rápida es el botón **"Volver a
-modo texto"** de la GUI la próxima vez que arranques (o `installer.reset_to_default()`).
-Si no puedes ni arrancar el sistema:
-
-```bash
-# Desde el menú GRUB: presionar 'e', agregar al kernel:
-plymouth.enable=0
-
-# O desde TTY (Ctrl+Alt+F2), forzando el theme de texto vía update-alternatives
-# (plymouth-set-default-theme no está disponible en todas las distros):
-sudo update-alternatives --set default.plymouth /usr/share/plymouth/themes/text/text.plymouth
-sudo update-initramfs -u
-```
-
-### Test sin reiniciar
-
-El botón **"Probar theme instalado"** de la GUI hace exactamente esto por ti.
-Equivalente manual:
-
-```bash
-sudo plymouthd --no-daemon --debug
-# En otra terminal:
-sudo plymouth show-splash
-# Para salir (Ctrl+Alt+F3):
-sudo plymouth quit
-```
+- **Tareas largas** (convertir, instalar, ffmpeg) corren como *jobs*. La API responde `202` y el progreso llega por un único stream SSE (`/api/events`).
+- **Acciones con `pkexec`** comparten un lock: nunca hay dos prompts de contraseña ni dos `update-initramfs` a la vez (la API responde `409`).
+- **Servidor local seguro:** escucha solo en `127.0.0.1`, en un puerto aleatorio y con un token nuevo en cada arranque, que viaja en una cookie HttpOnly/SameSite=Strict. Además valida `Host` y `Origin` y exige el header `X-Plymotion` en cada escritura.
+- **Archivos:** el selector nativo (GTK) entrega rutas reales, así que no se suben videos. Arrastrar y soltar también funciona en la ventana nativa.
 
 ## Desarrollo
 
-### Requisitos
-
-- Python 3.10+
-- uv
-- ffmpeg (para extraer frames de video)
-- polkit/`pkexec` (para instalar/probar/restaurar desde la GUI — viene por
-  defecto en GNOME, KDE y la mayoría de entornos de escritorio Linux)
-
-### Comandos de desarrollo
+```bash
+uv run plymotion --dev            # API en :8765 con /api/docs, imprime la URL de acceso
+npm --prefix frontend run dev     # Vite en :5173 con recarga en caliente; abre la URL impresa
+```
 
 ```bash
-# Instalar dependencias
-uv sync --all-extras
-
-# Tests
-uv run pytest tests/ -v
-
-# Linting
-uv run ruff check src/ tests/
-
-# Type checking
-uv run pyright src/
+uv run pytest && uv run ruff check src tests && uv run pyright
+npm --prefix frontend run lint && npm --prefix frontend run typecheck
+npm --prefix frontend run gen:api  # tras cambiar la API: regenera openapi.json y los tipos TS
 ```
 
-### Estructura del proyecto
+## Seguridad de Plymouth
 
-```
-plymotion/
-├── pyproject.toml
-├── src/plymotion/
-│   ├── __init__.py
-│   ├── __main__.py
-│   ├── cli.py                  # CLI principal (convert, gui)
-│   ├── video_extractor.py      # Extracción de frames con ffmpeg
-│   ├── frame_processor.py      # Optimización con Pillow
-│   ├── template_generator.py   # Generador de .script y .plymouth
-│   ├── installer.py            # Instalar/probar/restaurar (todo vía pkexec)
-│   ├── login_logo.py           # Logo del login de GDM (vía pkexec)
-│   ├── library.py              # Galería local de themes generados
-│   ├── image_sequence.py       # Secuencia de imágenes -> video/GIF
-│   ├── sorting.py              # Orden natural de nombres de archivo
-│   └── ui/
-│       ├── app.py              # Ventana principal Flet (barra lateral)
-│       ├── context.py          # Estado compartido entre vistas
-│       ├── widgets.py          # Helpers reutilizables (dropdowns, log, tarjetas)
-│       └── views/              # Convertir, Galería, Sistema, Login, Restaurar
-├── tests/                      # Un test_*.py por módulo
-├── docs/                       # Investigación técnica de Plymouth/GDM
-├── examples/
-│   ├── legacy-manual-theme.plymouth  # Theme de referencia escrito a mano
-│   └── legacy-manual-theme.script    # (anterior al generador automático)
-└── README.md
+Un tema roto o corrupto **nunca** impide arrancar: Plymouth cae al modo texto y
+systemd sigue. Desde la app, **Sistema → Volver a modo texto** es el respaldo
+garantizado. Si no puedes entrar al escritorio:
+
+```bash
+# En GRUB, pulsa 'e' y añade a la línea del kernel:
+plymouth.enable=0
+
+# O desde una TTY (Ctrl+Alt+F3):
+sudo update-alternatives --set default.plymouth /usr/share/plymouth/themes/text/text.plymouth
+sudo update-initramfs -u -k all
 ```
 
-### Arquitectura UI/Lógica
-
-La UI ([Flet](https://flet.dev)) es solo una capa de presentación. Toda la lógica vive en módulos independientes:
-- `video_extractor.py` - Extracción de frames
-- `frame_processor.py` - Optimización de imágenes
-- `template_generator.py` - Generación de archivos Plymouth
-- `installer.py` - Instalar, probar en vivo, restaurar backup o volver a modo texto (todo vía `pkexec`)
-- `login_logo.py` - Cambiar o restaurar el logo del login de GDM (vía `pkexec`)
-
-Esto permite agregar otras interfaces (web, CLI, etc.) sin modificar la lógica core.
+Detalles técnicos (initramfs, nombres de archivo, BGRT, GDM) en
+[`docs/plymouth-ubuntu-gnome.md`](docs/plymouth-ubuntu-gnome.md).
 
 ## License
 

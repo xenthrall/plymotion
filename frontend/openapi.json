@@ -1,0 +1,2271 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Plymotion API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/meta": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Get Meta",
+        "operationId": "get_meta_api_meta_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "operationId": "list_jobs_api_jobs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobInfo"
+                  },
+                  "type": "array",
+                  "title": "Response List Jobs Api Jobs Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_api_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Cancel Job",
+        "operationId": "cancel_job_api_jobs__job_id__delete",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Events",
+        "description": "One stream for everything: a `snapshot` of all jobs, then `job` and `log` events.",
+        "operationId": "events_api_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/dialogs/pick": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Pick",
+        "operationId": "pick_api_dialogs_pick_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/media": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Media",
+        "description": "Stream a local video/image the user picked (Range requests supported for <video>).",
+        "operationId": "media_api_media_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/videos/inspect": {
+      "post": {
+        "tags": [
+          "convert"
+        ],
+        "summary": "Inspect Video",
+        "operationId": "inspect_video_api_videos_inspect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PathRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/convert/estimate": {
+      "post": {
+        "tags": [
+          "convert"
+        ],
+        "summary": "Estimate",
+        "operationId": "estimate_api_convert_estimate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstimateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estimate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/convert": {
+      "post": {
+        "tags": [
+          "convert"
+        ],
+        "summary": "Start Convert",
+        "operationId": "start_convert_api_convert_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/library": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "List Library",
+        "operationId": "list_library_api_library_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LibraryTheme"
+                  },
+                  "type": "array",
+                  "title": "Response List Library Api Library Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/library/{slug}": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Get Library Theme",
+        "operationId": "get_library_theme_api_library__slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryTheme"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Delete Library Theme",
+        "operationId": "delete_library_theme_api_library__slug__delete",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/library/{slug}/frames/{index}": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Library Frame",
+        "operationId": "library_frame_api_library__slug__frames__index__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/library/{slug}/install": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Install",
+        "operationId": "install_api_library__slug__install_post",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/library/{slug}/reveal": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Reveal Theme",
+        "operationId": "reveal_theme_api_library__slug__reveal_post",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/themes": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "List Installed",
+        "operationId": "list_installed_api_system_themes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InstalledTheme"
+                  },
+                  "type": "array",
+                  "title": "Response List Installed Api System Themes Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/themes/{dir_name}/frames/{index}": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Installed Frame",
+        "operationId": "installed_frame_api_system_themes__dir_name__frames__index__get",
+        "parameters": [
+          {
+            "name": "dir_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dir Name"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/themes/{dir_name}/activate": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Activate",
+        "operationId": "activate_api_system_themes__dir_name__activate_post",
+        "parameters": [
+          {
+            "name": "dir_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dir Name"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/themes/{dir_name}": {
+      "delete": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Uninstall",
+        "operationId": "uninstall_api_system_themes__dir_name__delete",
+        "parameters": [
+          {
+            "name": "dir_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dir Name"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/restore-backup": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Restore Backup",
+        "operationId": "restore_backup_api_system_restore_backup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreBackupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/reset-text": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Reset Text",
+        "operationId": "reset_text_api_system_reset_text_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/preview": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_api_system_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login-logo": {
+      "get": {
+        "tags": [
+          "login-logo"
+        ],
+        "summary": "State",
+        "operationId": "state_api_login_logo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginLogoState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login-logo/current": {
+      "get": {
+        "tags": [
+          "login-logo"
+        ],
+        "summary": "Current",
+        "operationId": "current_api_login_logo_current_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/login-logo/preview": {
+      "post": {
+        "tags": [
+          "login-logo"
+        ],
+        "summary": "Make Preview",
+        "operationId": "make_preview_api_login_logo_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login-logo/previews/{preview_id}": {
+      "get": {
+        "tags": [
+          "login-logo"
+        ],
+        "summary": "Preview File",
+        "operationId": "preview_file_api_login_logo_previews__preview_id__get",
+        "parameters": [
+          {
+            "name": "preview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Preview Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login-logo/apply": {
+      "post": {
+        "tags": [
+          "login-logo"
+        ],
+        "summary": "Apply",
+        "operationId": "apply_api_login_logo_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/login-logo/restore": {
+      "post": {
+        "tags": [
+          "login-logo"
+        ],
+        "summary": "Restore",
+        "operationId": "restore_api_login_logo_restore_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sequences": {
+      "post": {
+        "tags": [
+          "sequences"
+        ],
+        "summary": "Build",
+        "operationId": "build_api_sequences_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SequenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sequences/outputs": {
+      "get": {
+        "tags": [
+          "sequences"
+        ],
+        "summary": "List Outputs",
+        "operationId": "list_outputs_api_sequences_outputs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SequenceOutput"
+                  },
+                  "type": "array",
+                  "title": "Response List Outputs Api Sequences Outputs Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sequences/outputs/{filename}": {
+      "get": {
+        "tags": [
+          "sequences"
+        ],
+        "summary": "Get Output",
+        "operationId": "get_output_api_sequences_outputs__filename__get",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sequences"
+        ],
+        "summary": "Delete Output",
+        "operationId": "delete_output_api_sequences_outputs__filename__delete",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sequences/outputs/reveal": {
+      "post": {
+        "tags": [
+          "sequences"
+        ],
+        "summary": "Reveal Outputs",
+        "operationId": "reveal_outputs_api_sequences_outputs_reveal_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/prefs": {
+      "get": {
+        "tags": [
+          "prefs"
+        ],
+        "summary": "Get Prefs",
+        "operationId": "get_prefs_api_prefs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prefs"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "prefs"
+        ],
+        "summary": "Patch Prefs",
+        "operationId": "patch_prefs_api_prefs_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrefsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prefs"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Capabilities": {
+        "properties": {
+          "ffmpeg": {
+            "type": "boolean",
+            "title": "Ffmpeg"
+          },
+          "pkexec": {
+            "type": "boolean",
+            "title": "Pkexec"
+          },
+          "gdm": {
+            "type": "boolean",
+            "title": "Gdm"
+          },
+          "native_dialogs": {
+            "type": "boolean",
+            "title": "Native Dialogs"
+          },
+          "desktop": {
+            "type": "boolean",
+            "title": "Desktop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ffmpeg",
+          "pkexec",
+          "gdm",
+          "native_dialogs",
+          "desktop"
+        ],
+        "title": "Capabilities"
+      },
+      "ConvertRequest": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "max_width": {
+            "type": "integer",
+            "maximum": 7680.0,
+            "minimum": 16.0,
+            "title": "Max Width",
+            "default": 320
+          },
+          "max_height": {
+            "type": "integer",
+            "maximum": 4320.0,
+            "minimum": 16.0,
+            "title": "Max Height",
+            "default": 240
+          },
+          "fps": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Fps",
+            "default": 30
+          },
+          "colors": {
+            "type": "integer",
+            "maximum": 256.0,
+            "minimum": 2.0,
+            "title": "Colors",
+            "default": 64
+          },
+          "trim_start": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Trim Start",
+            "default": 0
+          },
+          "trim_duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trim Duration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "name"
+        ],
+        "title": "ConvertRequest"
+      },
+      "Estimate": {
+        "properties": {
+          "frame_count": {
+            "type": "integer",
+            "title": "Frame Count"
+          },
+          "loop_seconds": {
+            "type": "number",
+            "title": "Loop Seconds"
+          },
+          "refresh_rate": {
+            "type": "integer",
+            "title": "Refresh Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frame_count",
+          "loop_seconds",
+          "refresh_rate"
+        ],
+        "title": "Estimate"
+      },
+      "EstimateRequest": {
+        "properties": {
+          "duration": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Duration"
+          },
+          "fps": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Fps"
+          },
+          "trim_start": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Trim Start",
+            "default": 0
+          },
+          "trim_duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trim Duration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "duration",
+          "fps"
+        ],
+        "title": "EstimateRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InstalledTheme": {
+        "properties": {
+          "dir_name": {
+            "type": "string",
+            "title": "Dir Name"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "is_plymotion": {
+            "type": "boolean",
+            "title": "Is Plymotion"
+          },
+          "has_backup": {
+            "type": "boolean",
+            "title": "Has Backup"
+          },
+          "frame_count": {
+            "type": "integer",
+            "title": "Frame Count"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "frame_url_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Url Template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dir_name",
+          "name",
+          "description",
+          "is_default",
+          "is_plymotion",
+          "has_backup",
+          "frame_count",
+          "thumbnail_url",
+          "frame_url_template"
+        ],
+        "title": "InstalledTheme"
+      },
+      "JobAccepted": {
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/JobInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job"
+        ],
+        "title": "JobAccepted"
+      },
+      "JobDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "result": {
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cancellable": {
+            "type": "boolean",
+            "title": "Cancellable"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "log_tail": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Log Tail"
+          },
+          "logs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Logs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "state",
+          "progress",
+          "stage",
+          "error",
+          "cancellable",
+          "created_at",
+          "finished_at",
+          "log_tail",
+          "logs"
+        ],
+        "title": "JobDetail"
+      },
+      "JobInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "result": {
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "cancellable": {
+            "type": "boolean",
+            "title": "Cancellable"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "log_tail": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Log Tail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "state",
+          "progress",
+          "stage",
+          "error",
+          "cancellable",
+          "created_at",
+          "finished_at",
+          "log_tail"
+        ],
+        "title": "JobInfo"
+      },
+      "LibraryTheme": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "frame_count": {
+            "type": "integer",
+            "title": "Frame Count"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "fps": {
+            "type": "integer",
+            "title": "Fps"
+          },
+          "colors": {
+            "type": "integer",
+            "title": "Colors"
+          },
+          "loop_seconds": {
+            "type": "number",
+            "title": "Loop Seconds"
+          },
+          "total_bytes": {
+            "type": "integer",
+            "title": "Total Bytes"
+          },
+          "source_video": {
+            "type": "string",
+            "title": "Source Video"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "installed": {
+            "type": "boolean",
+            "title": "Installed"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "frame_url_template": {
+            "type": "string",
+            "title": "Frame Url Template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "frame_count",
+          "width",
+          "height",
+          "fps",
+          "colors",
+          "loop_seconds",
+          "total_bytes",
+          "source_video",
+          "created_at",
+          "installed",
+          "thumbnail_url",
+          "frame_url_template"
+        ],
+        "title": "LibraryTheme"
+      },
+      "LoginLogoState": {
+        "properties": {
+          "gdm_available": {
+            "type": "boolean",
+            "title": "Gdm Available"
+          },
+          "custom_installed": {
+            "type": "boolean",
+            "title": "Custom Installed"
+          },
+          "current_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Url"
+          },
+          "default_height": {
+            "type": "integer",
+            "title": "Default Height"
+          },
+          "max_width": {
+            "type": "integer",
+            "title": "Max Width"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gdm_available",
+          "custom_installed",
+          "current_url",
+          "default_height",
+          "max_width"
+        ],
+        "title": "LoginLogoState"
+      },
+      "LogoPreview": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "width",
+          "height"
+        ],
+        "title": "LogoPreview"
+      },
+      "LogoPreviewRequest": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "max_height": {
+            "type": "integer",
+            "maximum": 400.0,
+            "minimum": 16.0,
+            "title": "Max Height",
+            "default": 72
+          }
+        },
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "title": "LogoPreviewRequest"
+      },
+      "Meta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
+          },
+          "system": {
+            "$ref": "#/components/schemas/SystemInfo"
+          },
+          "data_dir": {
+            "type": "string",
+            "title": "Data Dir"
+          },
+          "busy_locks": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Busy Locks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "capabilities",
+          "system",
+          "data_dir",
+          "busy_locks"
+        ],
+        "title": "Meta"
+      },
+      "PathRequest": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "title": "PathRequest"
+      },
+      "PickRequest": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "video",
+              "image",
+              "images"
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "PickRequest"
+      },
+      "PickResult": {
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paths"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paths"
+        ],
+        "title": "PickResult"
+      },
+      "Prefs": {
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "default": "system"
+          },
+          "accent": {
+            "type": "string",
+            "title": "Accent",
+            "default": "violet"
+          },
+          "sidebar_collapsed": {
+            "type": "boolean",
+            "title": "Sidebar Collapsed",
+            "default": false
+          },
+          "convert_defaults": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Convert Defaults"
+          }
+        },
+        "type": "object",
+        "title": "Prefs"
+      },
+      "PrefsPatch": {
+        "properties": {
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "system",
+                  "light",
+                  "dark"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
+          "accent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accent"
+          },
+          "sidebar_collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sidebar Collapsed"
+          },
+          "convert_defaults": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Convert Defaults"
+          }
+        },
+        "type": "object",
+        "title": "PrefsPatch"
+      },
+      "PreviewRequest": {
+        "properties": {
+          "seconds": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 2.0,
+            "title": "Seconds",
+            "default": 6
+          }
+        },
+        "type": "object",
+        "title": "PreviewRequest"
+      },
+      "RestoreBackupRequest": {
+        "properties": {
+          "theme": {
+            "type": "string",
+            "title": "Theme"
+          }
+        },
+        "type": "object",
+        "required": [
+          "theme"
+        ],
+        "title": "RestoreBackupRequest"
+      },
+      "SequenceOutput": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "path",
+          "size_bytes",
+          "created_at",
+          "url"
+        ],
+        "title": "SequenceOutput"
+      },
+      "SequenceRequest": {
+        "properties": {
+          "images": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Images"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mp4",
+              "gif"
+            ],
+            "title": "Format",
+            "default": "mp4"
+          },
+          "fps": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Fps",
+            "default": 24
+          },
+          "max_width": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7680.0,
+                "minimum": 16.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Width"
+          }
+        },
+        "type": "object",
+        "required": [
+          "images",
+          "name"
+        ],
+        "title": "SequenceRequest"
+      },
+      "SystemInfo": {
+        "properties": {
+          "distro": {
+            "type": "string",
+            "title": "Distro"
+          },
+          "kernel": {
+            "type": "string",
+            "title": "Kernel"
+          },
+          "default_theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Theme"
+          },
+          "initramfs_tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initramfs Tool"
+          }
+        },
+        "type": "object",
+        "required": [
+          "distro",
+          "kernel",
+          "default_theme",
+          "initramfs_tool"
+        ],
+        "title": "SystemInfo"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VideoInfo": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "duration": {
+            "type": "number",
+            "title": "Duration"
+          },
+          "fps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fps"
+          },
+          "codec": {
+            "type": "string",
+            "title": "Codec"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "media_url": {
+            "type": "string",
+            "title": "Media Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "name",
+          "width",
+          "height",
+          "duration",
+          "fps",
+          "codec",
+          "size_bytes",
+          "media_url"
+        ],
+        "title": "VideoInfo"
+      }
+    }
+  }
+}

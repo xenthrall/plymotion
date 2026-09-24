@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from plymotion.template_generator import estimate_loop_seconds, generate_plymouth, generate_script
+from plymotion.core.template_generator import (
+    estimate_loop_seconds,
+    generate_plymouth,
+    generate_script,
+)
 
 
 def test_generate_script(tmp_path: Path) -> None:

@@ -9,8 +9,8 @@ from typing import Any
 import pytest
 from PIL import Image
 
-import plymotion.image_sequence as image_sequence
-from plymotion.image_sequence import build_video_from_images, unique_output_path
+import plymotion.core.image_sequence as image_sequence
+from plymotion.core.image_sequence import build_video_from_images, unique_output_path
 
 
 class _FakeRun:
