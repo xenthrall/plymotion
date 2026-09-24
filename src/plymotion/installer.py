@@ -23,7 +23,7 @@ BACKUP_DIR = Path("/var/backups/plymotion")
 TEXT_THEME_PLYMOUTH = THEMES_DIR / "text" / "text.plymouth"
 
 
-def _run_privileged(script: str) -> None:
+def run_privileged(script: str) -> None:
     """Run a shell script as root via pkexec, raising with stderr on failure."""
     result = subprocess.run(
         ["pkexec", "bash", "-c", script],
@@ -173,7 +173,7 @@ default.plymouth "$plymouth_file" {int(priority)}
 # the old theme baked into the boot image the user actually sees.
 update-initramfs -u -k all
 """
-    _run_privileged(script)
+    run_privileged(script)
 
 
 def restore_backup(theme_name: str = "plymotion") -> bool:
@@ -192,7 +192,7 @@ rm -rf {shlex.quote(str(dest))}
 cp -r {shlex.quote(str(backup_path))} {shlex.quote(str(dest))}
 update-initramfs -u -k all
 """
-    _run_privileged(script)
+    run_privileged(script)
     return True
 
 
@@ -216,7 +216,7 @@ def activate_theme(theme_dir_name: str) -> None:
 update-alternatives --set default.plymouth {shlex.quote(str(plymouth_file))}
 update-initramfs -u -k all
 """
-    _run_privileged(script)
+    run_privileged(script)
 
 
 def uninstall_theme(theme_dir_name: str) -> None:
@@ -239,7 +239,7 @@ update-alternatives --remove default.plymouth {shlex.quote(str(plymouth_file))}
 rm -rf {shlex.quote(str(dest))}
 update-initramfs -u -k all
 """
-    _run_privileged(script)
+    run_privileged(script)
 
 
 def reset_to_default() -> None:
@@ -248,7 +248,7 @@ def reset_to_default() -> None:
 update-alternatives --set default.plymouth {shlex.quote(str(TEXT_THEME_PLYMOUTH))}
 update-initramfs -u -k all
 """
-    _run_privileged(script)
+    run_privileged(script)
 
 
 def preview_installed_theme(seconds: int = 6) -> None:
@@ -268,4 +268,4 @@ sleep {int(seconds)}
 plymouth --quit
 wait "$plymouthd_pid" 2>/dev/null || true
 """
-    _run_privileged(script)
+    run_privileged(script)

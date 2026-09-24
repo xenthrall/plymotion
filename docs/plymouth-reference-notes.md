@@ -4,6 +4,11 @@ Este documento resume conocimiento práctico sobre cómo funcionan los temas
 Plymouth de tipo "animación por frames" (el mismo enfoque que usa
 `plymotion`), y cómo se instalan/prueban en distintas distros.
 
+> **Actualización:** para Ubuntu 26.04 (dracut en vez de initramfs-tools),
+> integración con GNOME/GDM y límites reales, ver
+> [`plymouth-ubuntu-gnome.md`](plymouth-ubuntu-gnome.md), que corrige
+> algunos supuestos de este documento.
+
 ## 1. Estructura de un tema Plymouth basado en script
 
 - `*.plymouth`: define `Name`, `Description`, `ModuleName=script`, y en la

@@ -9,6 +9,7 @@ Convierte cualquier video en una animación de arranque personalizada para tu si
 - **Frame-by-frame**: Extrae frames del video y los convierte en una secuencia de animación
 - **Loop infinito**: La animación se repite continuamente durante el boot
 - **Optimización automática**: Redimensiona y comprime frames para carga rápida
+- **Logo del login (GDM)**: reemplaza el logo de Ubuntu en la pantalla de login por tu propia imagen, y vuelve al original con un clic
 - **Instalación segura**: Backup automático del theme anterior antes de sobreescribir; cada acción privilegiada pasa por un único prompt gráfico de `pkexec`
 
 ## Instalación
@@ -47,9 +48,28 @@ terminal:
    de ese theme) o **Volver a modo texto** (fallback seguro garantizado) —
    ambos también piden `pkexec`.
 
+#### Logo de la pantalla de login
+
+La vista **Login** reemplaza el logo de la distro que GDM muestra abajo en
+la pantalla de login (Ubuntu + GNOME):
+
+1. **Examinar** → elige una imagen (PNG, JPG, WebP o BMP). Lo ideal es un
+   PNG con fondo transparente y colores claros, porque el login es oscuro.
+2. Elige el **alto máximo**: GDM dibuja el logo a su tamaño real en
+   píxeles, sin escalarlo. 72 px es el alto del logo de Ubuntu. La vista
+   previa compara el logo actual con el nuevo a tamaño real.
+3. **Aplicar logo** → copia la imagen redimensionada a
+   `/usr/share/plymotion/login-logo.png` y agrega
+   `/usr/share/gdm/dconf/95-plymotion-logo` (`pkexec`). Se ve la próxima vez
+   que aparezca el login (cerrar sesión o reiniciar).
+4. **Restaurar logo de la distro** → borra esos dos archivos.
+
+No modifica ningún archivo de Ubuntu ni de `/etc/gdm3`. Detalles técnicos en
+[`docs/plymouth-ubuntu-gnome.md`](docs/plymouth-ubuntu-gnome.md) §3.1.
+
 Todas las acciones que tocan el sistema (Instalar, Probar, Restaurar,
-Volver a modo texto) muestran antes un diálogo de confirmación explicando
-qué va a pasar.
+Volver a modo texto, Aplicar/Restaurar logo) muestran antes un diálogo de
+confirmación explicando qué va a pasar.
 
 ### Línea de comandos (automatización/scripting)
 
@@ -177,16 +197,17 @@ plymotion/
 │   ├── frame_processor.py      # Optimización con Pillow
 │   ├── template_generator.py   # Generador de .script y .plymouth
 │   ├── installer.py            # Instalar/probar/restaurar (todo vía pkexec)
+│   ├── login_logo.py           # Logo del login de GDM (vía pkexec)
+│   ├── library.py              # Galería local de themes generados
+│   ├── image_sequence.py       # Secuencia de imágenes -> video/GIF
+│   ├── sorting.py              # Orden natural de nombres de archivo
 │   └── ui/
-│       ├── __init__.py
-│       ├── app.py              # Ventana principal Flet
-│       └── widgets.py          # Helpers reutilizables (dropdowns, log)
-├── tests/
-│   ├── test_frame_processor.py
-│   ├── test_template_generator.py
-│   ├── test_cli.py
-│   ├── test_installer.py
-│   └── test_ui.py
+│       ├── app.py              # Ventana principal Flet (barra lateral)
+│       ├── context.py          # Estado compartido entre vistas
+│       ├── widgets.py          # Helpers reutilizables (dropdowns, log, tarjetas)
+│       └── views/              # Convertir, Galería, Sistema, Login, Restaurar
+├── tests/                      # Un test_*.py por módulo
+├── docs/                       # Investigación técnica de Plymouth/GDM
 ├── examples/
 │   ├── legacy-manual-theme.plymouth  # Theme de referencia escrito a mano
 │   └── legacy-manual-theme.script    # (anterior al generador automático)
@@ -200,6 +221,7 @@ La UI ([Flet](https://flet.dev)) es solo una capa de presentación. Toda la lóg
 - `frame_processor.py` - Optimización de imágenes
 - `template_generator.py` - Generación de archivos Plymouth
 - `installer.py` - Instalar, probar en vivo, restaurar backup o volver a modo texto (todo vía `pkexec`)
+- `login_logo.py` - Cambiar o restaurar el logo del login de GDM (vía `pkexec`)
 
 Esto permite agregar otras interfaces (web, CLI, etc.) sin modificar la lógica core.
 
